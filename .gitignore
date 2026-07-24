@@ -8,3 +8,5 @@ logs/
 *.log
 npm-debug.log*
 .DS_Store
+test_admin_server.js
+config_test/

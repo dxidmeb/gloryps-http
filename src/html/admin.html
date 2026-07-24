@@ -1,237 +1,482 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>GloryPs Admin Panel</title>
 <style>
 :root{
-  --bg:#0d0d0d; --panel:#141414; --panel2:#191919; --border:#262626;
+  --bg:#0d0d0d; --panel:#141414; --panel2:#191919; --panel3:#111; --border:#262626;
   --text:#e0e0e0; --muted:#8a939b; --accent:#3a4a5a; --accent2:#2e3d4d;
   --ok:#4a6a55; --err:#7a4a4a; --warn:#6a5a3a;
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;display:flex;height:100vh;overflow:hidden}
-aside{width:230px;background:#101010;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
-.brand{padding:20px 18px;border-bottom:1px solid var(--border)}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;overflow-x:hidden}
+a{color:inherit}
+.app{display:flex;min-height:100vh}
+
+/* Sidebar */
+aside{width:230px;background:var(--panel3);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh}
+.brand{padding:18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .brand h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.02em}
-.brand span{font-size:11px;color:var(--muted)}
+.brand span{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+.closebtn{display:none;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
 nav{flex:1;padding:10px 0;overflow:auto}
-nav a{display:block;padding:11px 20px;color:var(--muted);text-decoration:none;font-size:13px;border-left:3px solid transparent;cursor:pointer}
+nav a{display:flex;align-items:center;gap:10px;padding:12px 20px;color:var(--muted);text-decoration:none;font-size:13px;border-left:3px solid transparent;cursor:pointer;min-height:44px}
 nav a:hover{color:var(--text);background:#161616}
 nav a.active{color:var(--text);background:#181d22;border-left-color:var(--accent)}
+nav a .ic{width:16px;text-align:center;opacity:.85}
 .sideft{padding:14px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
-.sideft button{background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:6px 12px;cursor:pointer;font-size:12px;width:100%}
+.sideft .who{margin-bottom:8px;word-break:break-all}
+.sideft button{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:9px 12px;cursor:pointer;font-size:12px;width:100%;min-height:40px}
 .sideft button:hover{color:var(--text);border-color:var(--accent)}
-main{flex:1;overflow:auto;padding:26px 30px}
-h2{font-size:17px;font-weight:600;margin:0 0 4px}
+
+/* Topbar (mobile) */
+.topbar{display:none;position:sticky;top:0;z-index:40;background:var(--panel3);border-bottom:1px solid var(--border);padding:10px 14px;align-items:center;gap:12px}
+.topbar .burger{background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;width:42px;height:42px;font-size:18px;cursor:pointer}
+.topbar h1{font-size:14px;margin:0;font-weight:600}
+.backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45}
+
+/* Main */
+main{flex:1;min-width:0;overflow-x:hidden;padding:26px 30px}
+h2{font-size:18px;font-weight:600;margin:0 0 4px}
 p.sub{color:var(--muted);font-size:12px;margin:0 0 20px}
-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
-th,td{text-align:left;padding:10px 14px;border-bottom:1px solid #1f1f1f;font-size:13px}
-th{background:var(--panel2);color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.hidden{display:none!important}
+
+/* Cards / dashboard */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.card .n{font-size:26px;font-weight:600}
+.card .l{font-size:12px;color:var(--muted);margin-top:2px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.dot.up{background:var(--ok)}.dot.down{background:var(--err)}
+.statusrow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.pill{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:6px}
+.pill small{color:var(--muted)}
+
+/* Buttons */
+.btn{background:var(--accent2);border:1px solid var(--accent);color:#dfe6ec;padding:9px 16px;border-radius:7px;font-size:13px;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:#354657}
+.btn.ok{background:#26382e;border-color:var(--ok)}
+.btn.ok:hover{background:#2e4438}
+.btn.danger{background:#3a2626;border-color:var(--err)}
+.btn.danger:hover{background:#442e2e}
+.btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}
+.btn.ghost:hover{color:var(--text);border-color:var(--accent)}
+.btn.sm{padding:6px 12px;font-size:12px;min-height:34px}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+
+/* Panels/sections */
+.section{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+.section h3{margin:0 0 12px;font-size:14px;font-weight:600}
+.logbox{background:#0b0b0b;border:1px solid var(--border);border-radius:8px;padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#b8c0c8;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto;line-height:1.6}
+
+/* Inputs */
+input,select,textarea{background:#0d0d0d;border:1px solid #2c2c2c;border-radius:7px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;font-family:inherit;min-height:40px;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5;resize:vertical}
+label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.toolbar input,.toolbar select{width:auto;flex:1;min-width:140px}
+
+/* Tables (desktop) */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;background:var(--panel);min-width:520px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid #1f1f1f;font-size:13px;white-space:nowrap}
+th{background:var(--panel2);color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0}
 tr:last-child td{border-bottom:none}
 tbody tr{cursor:pointer}
 tbody tr:hover{background:#1a1f24}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:22px}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px}
-.card .n{font-size:24px;font-weight:600}
-.card .l{font-size:12px;color:var(--muted);margin-top:2px}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
-.dot.up{background:#4a6a55}.dot.down{background:#7a4a4a}
-textarea{width:100%;min-height:480px;background:#101010;border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:14px;outline:none;resize:vertical;tab-size:4}
-textarea:focus{border-color:var(--accent)}
-.toolbar{display:flex;gap:10px;align-items:center;margin:14px 0;flex-wrap:wrap}
-button.btn{background:var(--accent2);border:1px solid var(--accent);color:#dfe6ec;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer}
-button.btn:hover{background:#354657}
-button.btn.save{background:#31463a;border-color:#41584a}
-button.btn.save:hover{background:#3a5244}
-button.btn.danger{background:#3a2626;border-color:#5a3a3a}
-button.btn.danger:hover{background:#4a3030}
-button.btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}
-.crumb{font-size:12px;color:var(--muted);margin-bottom:10px}
-.crumb a{color:var(--accent);cursor:pointer;text-decoration:none}
-#toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;border:1px solid var(--border);background:var(--panel);max-width:420px}
-#toast.show{opacity:1}
-#toast.ok{border-color:var(--ok);color:#a9c4b2}
-#toast.err{border-color:var(--err);color:#c9a3a3}
-.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--muted)}
-.kv{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 0;margin-top:10px}
-.kv .row{display:flex;padding:7px 16px;border-bottom:1px solid #1d1d1d;gap:14px}
-.kv .row:last-child{border-bottom:none}
-.kv .k{width:260px;flex-shrink:0;color:var(--muted);font-size:12px;padding-top:6px;word-break:break-all}
-.kv input,.kv select{flex:1;background:#101010;border:1px solid #222;border-radius:5px;color:var(--text);padding:6px 9px;font-size:12px;font-family:ui-monospace,Consolas,monospace;outline:none}
-.kv input:focus,.kv select:focus{border-color:var(--accent)}
-.badge{display:inline-block;background:#1c242c;border:1px solid var(--accent);color:#9db1c4;border-radius:4px;padding:2px 8px;font-size:11px;margin:2px 4px 2px 0}
-.search{background:#101010;border:1px solid #2c2c2c;border-radius:6px;color:var(--text);padding:8px 12px;font-size:13px;outline:none;width:240px}
-.search:focus{border-color:var(--accent)}
-.logline{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#9aa3aa;padding:5px 0;border-bottom:1px solid #1a1a1a;white-space:pre-wrap}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;border:1px solid var(--border);background:#161616;color:var(--muted)}
+.tag.ban{background:#3a2626;border-color:var(--err);color:#c99}
+.tag.role{background:#232d36;border-color:var(--accent);color:#bcd}
+
+/* Card list (mobile alt for tables) */
+.cardlist{display:none;flex-direction:column;gap:10px}
+.rowcard{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer}
+.rowcard:active{background:#1a1f24}
+.rowcard .t{font-size:15px;font-weight:600;margin-bottom:6px;word-break:break-word}
+.rowcard .kv{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted)}
+.rowcard .kv b{color:var(--text);font-weight:500}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto}
+.modal .box{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;width:100%;max-width:640px;margin:auto}
+.modal h3{margin:0 0 4px;font-size:16px}
+.modal .mhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.modal .x{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;line-height:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Toast */
+#toast{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;flex-direction:column;gap:8px;max-width:90vw}
+.toast{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--accent);color:var(--text);padding:12px 16px;border-radius:8px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:340px}
+.toast.ok{border-left-color:var(--ok)}
+.toast.err{border-left-color:var(--err)}
+.meta{font-size:12px;color:var(--muted);margin-top:8px}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.count{font-size:12px;color:var(--muted)}
+
+/* Responsive */
+@media (max-width:768px){
+  aside{position:fixed;left:0;top:0;height:100vh;z-index:50;transform:translateX(-100%);transition:transform .2s ease;box-shadow:0 0 30px rgba(0,0,0,.6)}
+  aside.open{transform:translateX(0)}
+  .closebtn{display:block}
+  .topbar{display:flex}
+  .backdrop.show{display:block}
+  main{padding:16px}
+  .grid2{grid-template-columns:1fr}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+  table{display:none}
+  .tablewrap{border:none}
+  .cardlist{display:flex}
+  h2{font-size:16px}
+}
 </style>
 </head>
 <body>
-<aside>
-  <div class="brand"><h1>GloryPs Admin</h1><span>server management</span></div>
-  <nav id="nav">
-    <a data-v="dashboard" class="active">Dashboard</a>
-    <a data-v="players">Players</a>
-    <a data-v="worlds">Worlds</a>
-    <a data-v="json">JSON Files</a>
-    <a data-v="roles">Roles.xaml</a>
-    <a data-v="text">Text Files</a>
-    <a data-v="logs">Audit Log</a>
-  </nav>
-  <div class="sideft"><div id="who" style="margin-bottom:8px"></div><button onclick="logout()">Log out</button></div>
-</aside>
-<main id="main"></main>
+<div class="app">
+  <div class="backdrop" id="backdrop" onclick="closeNav()"></div>
+  <aside id="sidebar">
+    <div class="brand">
+      <div><h1>GloryPs Admin</h1><span>Server Management</span></div>
+      <button class="closebtn" onclick="closeNav()">&times;</button>
+    </div>
+    <nav id="nav">
+      <a data-view="dashboard" class="active" onclick="nav('dashboard')"><span class="ic">▣</span> Dashboard</a>
+      <a data-view="control" onclick="nav('control')"><span class="ic">⚙</span> Server Control</a>
+      <a data-view="players" onclick="nav('players')"><span class="ic">◉</span> Players</a>
+      <a data-view="worlds" onclick="nav('worlds')"><span class="ic">◈</span> Worlds</a>
+      <a data-view="json" onclick="nav('json')"><span class="ic">{}</span> JSON Files</a>
+      <a data-view="text" onclick="nav('text')"><span class="ic">≡</span> Text Files</a>
+      <a data-view="roles" onclick="nav('roles')"><span class="ic">✦</span> Roles</a>
+      <a data-view="backups" onclick="nav('backups')"><span class="ic">⟲</span> Backups</a>
+    </nav>
+    <div class="sideft">
+      <div class="who">Signed in as <b id="whoami">…</b></div>
+      <button onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div class="topbar">
+      <button class="burger" onclick="openNav()">☰</button>
+      <h1 id="topTitle">Dashboard</h1>
+    </div>
+    <main id="main"></main>
+  </div>
+</div>
 <div id="toast"></div>
+
 <script>
-const $=s=>document.querySelector(s);
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let toastT;
-function toast(msg,ok=true){const t=$('#toast');t.textContent=msg;t.className='show '+(ok?'ok':'err');clearTimeout(toastT);toastT=setTimeout(()=>t.className='',2800);}
-async function api(url,opts){const r=await fetch(url,opts);if(r.status===401){location.href='/admin/login';throw new Error('auth');}const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
-async function logout(){await fetch('/admin/api/logout',{method:'POST'});location.href='/admin/login';}
-function fmtSize(b){return b>1048576?(b/1048576).toFixed(1)+' MB':b>1024?(b/1024).toFixed(1)+' KB':b+' B';}
-function confirmDlg(msg){return new Promise(r=>{if(confirm(msg))r(true);else r(false);});}
+"use strict";
+const $ = (s,r=document)=>r.querySelector(s);
+let CSRF = "";
+const state = { players:[], worlds:[] };
 
-const M=$('#main');
-document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>{document.querySelectorAll('#nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');views[a.dataset.v]();});
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtSize(b){if(b<1024)return b+" B";if(b<1048576)return (b/1024).toFixed(1)+" KB";return (b/1048576).toFixed(1)+" MB";}
+function fmtTime(ms){try{return new Date(ms).toLocaleString();}catch(e){return "-";}}
+function fmtDur(s){if(!s)return "-";const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+"h ":"")+m+"m";}
 
-async function fileTable(dir,title,sub,openFn,allowCreate){
-  M.innerHTML=`<h2>${title}</h2><p class="sub">${sub}</p>
-    <div class="toolbar"><input class="search" id="sf" placeholder="Filter files…"><span id="cnt" class="mono"></span>${allowCreate?'<button class="btn ghost" id="nf">+ New file</button>':''}</div>
-    <p class="mono">Loading…</p>`;
-  const {files}=await api('/admin/api/list?dir='+encodeURIComponent(dir));
-  const render=fl=>{
-    fl=fl.filter(f=>f.name.toLowerCase().includes(($('#sf').value||'').toLowerCase()));
-    $('#cnt').textContent=fl.length+' file(s)';
-    M.querySelector('p.sub').insertAdjacentHTML('afterend','');
-    const tbl=`<table><thead><tr><th>File</th><th>Size</th><th>Modified</th><th></th></tr></thead><tbody>${
-      fl.map(f=>`<tr data-f="${esc(f.name)}"><td>${esc(f.name)}</td><td>${fmtSize(f.size)}</td><td>${new Date(f.mtime).toLocaleString()}</td><td class="mono"><a class="crumb" data-del="${esc(f.name)}" style="color:#a97a7a">delete</a></td></tr>`).join('')
-    }</tbody></table>`;
-    const old=M.querySelector('table');if(old)old.remove();
-    M.insertAdjacentHTML('beforeend',tbl);
-    M.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=e=>{if(e.target.dataset.del)return;openFn(dir+'/'+tr.dataset.f);});
-    M.querySelectorAll('[data-del]').forEach(d=>d.onclick=async e=>{e.stopPropagation();if(await confirmDlg('Delete '+d.dataset.del+'? (a backup is kept)')){try{await api('/admin/api/file?path='+encodeURIComponent(dir+'/'+d.dataset.del),{method:'DELETE'});toast('Deleted '+d.dataset.del);views[Object.keys(views).find(k=>views[k]===arguments.callee)]&&0;}catch(err){toast(err.message,false);}}});
-  };
-  render(files);
-  $('#sf').oninput=()=>render(files);
-  if(allowCreate)$('#nf').onclick=async()=>{
-    const name=prompt('New file name (e.g. myfile.json):');if(!name)return;
-    try{await api('/admin/api/file/new',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dir,name,content:name.endsWith('.json')?'{}':''})});toast('Created '+name);views[dir==='database/json'?'json':dir==='database/text'?'text':'json']();}catch(e){toast(e.message,false);}
-  };
+function toast(msg,type){
+  const t=document.createElement('div');t.className='toast '+(type||'');t.textContent=msg;
+  $('#toast').appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},3200);
+}
+async function api(pathname,opts={}){
+  opts.headers=opts.headers||{};
+  if(opts.body){opts.headers['Content-Type']='application/json';}
+  if(['POST','PUT','DELETE'].includes((opts.method||'GET').toUpperCase())){opts.headers['X-CSRF-Token']=CSRF;}
+  const r=await fetch('/admin'+pathname,opts);
+  if(r.status===401){location.href='/admin/login';throw new Error('unauth');}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+async function logout(){try{await api('/api/logout',{method:'POST'});}catch(e){}location.href='/admin/login';}
+
+/* nav */
+function openNav(){$('#sidebar').classList.add('open');$('#backdrop').classList.add('show');}
+function closeNav(){$('#sidebar').classList.remove('open');$('#backdrop').classList.remove('show');}
+const TITLES={dashboard:'Dashboard',control:'Server Control',players:'Players',worlds:'Worlds',json:'JSON Files',text:'Text Files',roles:'Roles',backups:'Backups'};
+function nav(v){
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===v));
+  $('#topTitle').textContent=TITLES[v]||'';
+  closeNav();
+  render(v);
 }
 
-function editorView(rel,backView,backLabel,readonly=false){
-  return api('/admin/api/file?path='+encodeURIComponent(rel)).then(({content})=>{
-    M.innerHTML=`<div class="crumb"><a id="back">← ${backLabel}</a></div><h2>${esc(rel.split('/').pop())}</h2><p class="sub mono">${esc(rel)}</p>
-    <div class="toolbar">${readonly?'':`<button class="btn save" id="sv">Save</button><button class="btn ghost" id="fmt">Beautify</button>`}<span class="mono" id="st"></span></div>
-    <textarea id="ed" ${readonly?'readonly':''}></textarea>`;
-    const ed=$('#ed');ed.value=content;
-    $('#back').onclick=backView;
-    if(!readonly){
-      $('#fmt').onclick=()=>{if(rel.endsWith('.json')){try{ed.value=JSON.stringify(JSON.parse(ed.value),null,4);toast('Formatted');}catch(e){toast('Invalid JSON: '+e.message,false);}}else{toast('Only JSON supports beautify',false);}};
-      $('#sv').onclick=async()=>{
-        if(rel.endsWith('.json')){try{JSON.parse(ed.value);}catch(e){toast('Invalid JSON: '+e.message,false);return;}}
-        try{await api('/admin/api/file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:rel,content:ed.value})});$('#st').textContent='saved '+new Date().toLocaleTimeString();toast('Saved');}
-        catch(e){toast(e.message,false);}
-      };
-    }
-  }).catch(e=>toast(e.message,false));
-}
-
-const views={
-  async dashboard(){
-    M.innerHTML='<h2>Dashboard</h2><p class="sub">Server data overview</p><p class="mono">Loading…</p>';
-    const i=await api('/admin/api/info');
-    $('#who').textContent='Signed in as '+i.user;
-    const st=i.status||{};
-    M.innerHTML=`<h2>Dashboard</h2><p class="sub">Server data overview</p>
-    <div class="cards">
-      <div class="card"><div class="n">${i.counts.players}</div><div class="l">Players</div></div>
-      <div class="card"><div class="n">${i.counts.worlds}</div><div class="l">Worlds</div></div>
-      <div class="card"><div class="n">${i.counts.json}</div><div class="l">JSON files</div></div>
-      <div class="card"><div class="n">${i.counts.text}</div><div class="l">Text files</div></div>
-    </div>
-    <h2 style="font-size:14px">Service status</h2>
-    <div class="cards">
-      <div class="card"><div class="n" style="font-size:15px"><span class="dot ${st.game_udp&&st.game_udp.up?'up':'down'}"></span>Game (UDP ${st.game_udp?st.game_udp.port:'?'})</div><div class="l">${st.game_udp&&st.game_udp.up?'online':'offline'}</div></div>
-      <div class="card"><div class="n" style="font-size:15px"><span class="dot up"></span>HTTP (${st.http?st.http.port:'443'})</div><div class="l">admin panel live</div></div>
-    </div>
-    <h2 style="font-size:14px">Server path</h2>
-    <p class="mono">${esc(i.server_path)}</p>
-    <div>${i.database_subdirs.map(d=>`<span class="badge">${esc(d)}</span>`).join('')}</div>`;
-  },
-  players(){
-    M.innerHTML='<h2>Players</h2><p class="sub">All player accounts</p><p class="mono">Loading…</p>';
-    const {players}=await api('/admin/api/players');
-    M.innerHTML=`<h2>Players</h2><p class="sub">${players.length} account(s)</p>
-      <div class="toolbar"><input class="search" id="ps" placeholder="Search name…"><span id="cnt" class="mono"></span></div>
-      <table><thead><tr><th>Name</th><th>Gems</th><th>Role</th><th>Status</th><th>Keys</th></tr></thead><tbody>${
-        players.map(p=>`<tr data-f="database/players/${esc(p.file)}"><td>${esc(p.name)}</td><td>${p.gems}</td><td>${esc(p.role)}</td><td>${p.banned?'<span class="dot down"></span>banned':'<span class="dot up"></span>ok'}</td><td class="mono">${p.keys}</td></tr>`).join('')
-      }</tbody></table>`;
-    const filter=()=>{const q=$('#ps').value.toLowerCase();M.querySelectorAll('tbody tr').forEach(tr=>tr.style.display=tr.children[0].textContent.toLowerCase().includes(q)?'':'none');};
-    $('#ps').oninput=filter;
-    M.querySelector('tbody').querySelectorAll('tr').forEach(tr=>tr.onclick=()=>playerDetail(tr.dataset.f));
-  },
-  async worlds(){
-    M.innerHTML='<h2>Worlds</h2><p class="sub">All world files</p><p class="mono">Loading…</p>';
-    const {worlds}=await api('/admin/api/worlds');
-    M.innerHTML=`<h2>Worlds</h2><p class="sub">${worlds.length} world(s)</p>
-    <table><thead><tr><th>World Name</th><th>Owner</th><th>Blocks</th><th>File</th></tr></thead><tbody>${
-      worlds.map(w=>`<tr data-f="database/worlds/${esc(w.file)}"><td>${esc(w.name)}</td><td>${esc(w.owner)}</td><td class="mono">${w.blocks}</td><td class="mono">${esc(w.file)}</td></tr>`).join('')
-    }</tbody></table>`;
-    M.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>editorView(tr.dataset.f,views.worlds,'Worlds',true));
-  },
-  json(){fileTable('database/json','JSON Files','Server configuration JSON files',rel=>editorView(rel,views.json,'JSON Files'),true);},
-  roles(){editorView('database/roles.xaml',views.dashboard,'Dashboard');},
-  text(){fileTable('database/text','Text Files','Server text data files',rel=>editorView(rel,views.text,'Text Files'),true);},
-  async logs(){
-    M.innerHTML='<h2>Audit Log</h2><p class="sub">Recent admin actions</p><p class="mono">Loading…</p>';
-    const {lines}=await api('/admin/api/logs');
-    M.innerHTML=`<h2>Audit Log</h2><p class="sub">${lines.length} entr(y/ies)</p><div id="logbox">${
-      lines.map(l=>`<div class="logline">${esc(l)}</div>`).join('')||'<p class="mono">No entries yet.</p>'
-    }</div>`;
-  }
-};
-
-async function playerDetail(rel){
+/* views */
+async function render(v){
+  const m=$('#main');m.innerHTML='<p class="sub">Loading…</p>';
   try{
-    const {content}=await api('/admin/api/file?path='+encodeURIComponent(rel));
-    let data; try{data=JSON.parse(content);}catch(e){return editorView(rel,views.players,'Players');}
-    M.innerHTML=`<div class="crumb"><a id="back">← Players</a></div><h2>${esc(rel.split('/').pop().replace('.json',''))}</h2><p class="sub mono">${esc(rel)}</p>
-    <div class="toolbar"><button class="btn save" id="sv">Save changes</button><button class="btn ghost" id="raw">Raw JSON editor</button><button class="btn danger" id="del">Delete player</button></div>
-    <div class="kv" id="kv"></div>`;
-    const kv=$('#kv');const keys=Object.keys(data);
-    keys.forEach(k=>{
-      const v=data[k];const simple=(typeof v==='string'||typeof v==='number'||typeof v==='boolean');
-      const row=document.createElement('div');row.className='row';
-      row.innerHTML=`<div class="k">${esc(k)}</div>`;
-      const inp=document.createElement(simple?'input':'input');
-      inp.value=simple?String(v):JSON.stringify(v);
-      inp.dataset.k=k;inp.dataset.mode=simple?typeof v:'json';
-      row.appendChild(inp);kv.appendChild(row);
-    });
-    $('#back').onclick=views.players;
-    $('#raw').onclick=()=>editorView(rel,views.players,'Players');
-    $('#del').onclick=async()=>{if(await confirmDlg('Delete player file? (backup kept)')){try{await api('/admin/api/file?path='+encodeURIComponent(rel),{method:'DELETE'});toast('Player deleted');views.players();}catch(e){toast(e.message,false);}}};
-    $('#sv').onclick=async()=>{
-      const out={};
-      for(const inp of kv.querySelectorAll('input')){
-        const k=inp.dataset.k,m=inp.dataset.mode,val=inp.value;
-        try{
-          if(m==='number'){const n=Number(val);if(Number.isNaN(n))throw 0;out[k]=n;}
-          else if(m==='boolean'){if(val!=='true'&&val!=='false')throw 0;out[k]=val==='true';}
-          else if(m==='json'){out[k]=JSON.parse(val);}
-          else out[k]=val;
-        }catch(e){toast('Invalid value for field "'+k+'"',false);return;}
-      }
-      try{await api('/admin/api/file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:rel,content:JSON.stringify(out,null,4)})});toast('Player saved');}
-      catch(e){toast(e.message,false);}
-    };
-  }catch(e){toast(e.message,false);}
+    if(v==='dashboard')return renderDashboard(m);
+    if(v==='control')return renderControl(m);
+    if(v==='players')return renderPlayers(m);
+    if(v==='worlds')return renderWorlds(m);
+    if(v==='json')return renderDir(m,'database/json','JSON Files',true);
+    if(v==='text')return renderDir(m,'database/text','Text Files',false);
+    if(v==='roles')return renderRoles(m);
+    if(v==='backups')return renderBackups(m);
+  }catch(e){m.innerHTML='<p class="sub">Error: '+esc(e.message)+'</p>';}
 }
 
-views.dashboard();
+/* ---------- Dashboard ---------- */
+async function renderDashboard(m){
+  const info=await api('/api/info');
+  const g=info.status.game_udp,h=info.status.http;
+  m.innerHTML=`
+    <h2>Dashboard</h2><p class="sub">Live overview of ${esc(info.server_path)}</p>
+    <div class="cards">
+      <div class="card"><div class="n">${info.counts.players}</div><div class="l">Players</div></div>
+      <div class="card"><div class="n">${info.counts.worlds}</div><div class="l">Worlds</div></div>
+      <div class="card"><div class="n">${info.counts.json}</div><div class="l">JSON files</div></div>
+      <div class="card"><div class="n">${info.counts.text}</div><div class="l">Text files</div></div>
+    </div>
+    <div class="statusrow">
+      <div class="pill"><span class="dot ${g.up?'up':'down'}"></span> Game server <small>UDP ${g.port} · ${g.up?'online':'offline'}${g.uptime?' · '+fmtDur(g.uptime):''}</small></div>
+      <div class="pill"><span class="dot ${h.up?'up':'down'}"></span> HTTP server <small>TCP ${h.port} · ${h.up?'online':'offline'}</small></div>
+    </div>
+    <div class="btnrow">
+      <button class="btn ok" onclick="ctrl('game:start')">Start Game</button>
+      <button class="btn danger" onclick="ctrl('game:stop')">Stop Game</button>
+      <button class="btn" onclick="ctrl('game:restart')">Restart Game</button>
+    </div>
+    <div class="section"><div class="spread"><h3>Recent Activity</h3><button class="btn ghost sm" onclick="render('dashboard')">Refresh</button></div>
+      <div class="logbox" id="auditbox">Loading…</div></div>`;
+  try{const l=await api('/api/logs?n=12');$('#auditbox').textContent=(l.lines||[]).join('\n')||'No activity yet.';}catch(e){$('#auditbox').textContent='—';}
+}
+
+async function ctrl(action){
+  if(action==='game:stop'&&!confirm('Stop the game server?'))return;
+  if(action==='http:restart'&&!confirm('Restart the HTTP server? Panel will disconnect briefly.'))return;
+  try{const r=await api('/api/server/control',{method:'POST',body:JSON.stringify({action})});
+    toast((r.note||('Done: '+action)),'ok');
+    setTimeout(()=>{const cur=document.querySelector('#nav a.active');if(cur)render(cur.dataset.view);},600);
+  }catch(e){toast(e.message,'err');}
+}
+
+/* ---------- Server Control ---------- */
+async function renderControl(m){
+  const s=await api('/api/server/status');
+  m.innerHTML=`
+    <h2>Server Control</h2><p class="sub">Strict command allowlist — no arbitrary execution</p>
+    <div class="section">
+      <h3><span class="dot ${s.game.up?'up':'down'}"></span> Game Server</h3>
+      <div class="meta">Binary: ${esc(s.game.bin)}<br>CWD: ${esc(s.game.cwd)}<br>
+        UDP port: ${s.game.port} · Status: ${s.game.up?'online':'offline'} · PID: ${s.game.pid||'—'} · Uptime: ${fmtDur(s.game.uptime)}</div>
+      <div class="btnrow" style="margin-top:14px">
+        <button class="btn ok" onclick="ctrl('game:start')">Start</button>
+        <button class="btn danger" onclick="ctrl('game:stop')">Stop</button>
+        <button class="btn" onclick="ctrl('game:restart')">Restart</button>
+      </div>
+    </div>
+    <div class="section">
+      <h3><span class="dot ${s.http.up?'up':'down'}"></span> HTTP Server</h3>
+      <div class="meta">TCP port: ${s.http.port} · Status: ${s.http.up?'online':'offline'} · PID: ${s.http.pid}</div>
+      <div class="btnrow" style="margin-top:14px">
+        <button class="btn danger" onclick="ctrl('http:restart')">Restart HTTP</button>
+        <button class="btn ghost" onclick="render('control')">Refresh</button>
+      </div>
+      <div class="meta">Note: HTTP restart exits this process; a supervisor / start.sh must relaunch it.</div>
+    </div>`;
+}
+
+/* ---------- Players ---------- */
+async function renderPlayers(m){
+  const {players}=await api('/api/players');state.players=players;
+  m.innerHTML=`
+    <h2>Players</h2><p class="sub">${players.length} player file(s)</p>
+    <div class="toolbar"><input id="psearch" placeholder="Search name / role…" oninput="filterPlayers()">
+      <select id="pfilter" onchange="filterPlayers()"><option value="">All</option><option value="banned">Banned only</option></select></div>
+    <div id="ptable"></div>`;
+  filterPlayers();
+}
+function filterPlayers(){
+  const q=($('#psearch').value||'').toLowerCase();
+  const f=$('#pfilter').value;
+  let list=state.players.filter(p=>(!q||p.name.toLowerCase().includes(q)||String(p.role).toLowerCase().includes(q))&&(f!=='banned'||p.banned));
+  const rows=list.map(p=>`<tr onclick="openPlayer('${esc(p.file)}')">
+    <td>${esc(p.name)}</td><td>${p.gems.toLocaleString()}</td>
+    <td><span class="tag role">${esc(p.role)}</span></td>
+    <td>${p.banned?'<span class="tag ban">BANNED</span>':'<span class="tag">ok</span>'}</td></tr>`).join('');
+  const cards=list.map(p=>`<div class="rowcard" onclick="openPlayer('${esc(p.file)}')">
+    <div class="t">${esc(p.name)} ${p.banned?'<span class="tag ban">BANNED</span>':''}</div>
+    <div class="kv"><span>Gems: <b>${p.gems.toLocaleString()}</b></span><span>Role: <b>${esc(p.role)}</b></span></div></div>`).join('');
+  $('#ptable').innerHTML=`<div class="count">${list.length} shown</div>
+    <div class="tablewrap"><table><thead><tr><th>Name</th><th>Gems</th><th>Role</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan=4>No players</td></tr>'}</tbody></table></div>
+    <div class="cardlist">${cards||'<p class="sub">No players</p>'}</div>`;
+}
+async function openPlayer(file){
+  const r=await api('/api/player?file='+encodeURIComponent(file));
+  const s=r.summary;
+  showModal(`
+    <div class="mhead"><div><h3>${esc(s.name)}</h3><div class="meta">${esc(file)}</div></div><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="grid2">
+      <div><label>Gems</label><input id="pg" type="number" value="${s.gems}"></div>
+      <div><label>Status</label><div style="padding-top:8px">${s.banned?'<span class="tag ban">BANNED</span>':'<span class="tag">Active</span>'} <span class="tag role">${esc(s.role)}</span></div></div>
+    </div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn ok" onclick="playerAct('${esc(file)}','setgems',document.getElementById('pg').value)">Set Gems</button>
+      ${s.banned?`<button class="btn" onclick="playerAct('${esc(file)}','unban')">Unban</button>`:`<button class="btn danger" onclick="playerAct('${esc(file)}','ban')">Ban</button>`}
+    </div>
+    <label>Raw JSON (edit &amp; save)</label>
+    <textarea id="praw" rows="14">${esc(JSON.stringify(r.data,null,2))}</textarea>
+    <div class="btnrow" style="margin-top:12px">
+      <button class="btn ghost sm" onclick="beautify('praw')">Beautify</button>
+      <span class="count" id="prawc"></span>
+    </div>
+    <div class="btnrow"><button class="btn" onclick="savePlayerRaw('${esc(file)}')">Save JSON</button><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
+  updateCount('praw','prawc');$('#praw').addEventListener('input',()=>updateCount('praw','prawc'));
+}
+async function playerAct(file,action,value){
+  if(action==='ban'&&!confirm('Ban this player?'))return;
+  try{await api('/api/player/update',{method:'POST',body:JSON.stringify({file,action,value})});
+    toast('Player updated','ok');closeModal();render('players');
+  }catch(e){toast(e.message,'err');}
+}
+async function savePlayerRaw(file){
+  let obj;try{obj=JSON.parse($('#praw').value);}catch(e){return toast('Invalid JSON: '+e.message,'err');}
+  try{await api('/api/player/update',{method:'POST',body:JSON.stringify({file,action:'raw',value:obj})});
+    toast('Saved','ok');closeModal();render('players');
+  }catch(e){toast(e.message,'err');}
+}
+
+/* ---------- Worlds ---------- */
+async function renderWorlds(m){
+  const {worlds}=await api('/api/worlds');state.worlds=worlds;
+  m.innerHTML=`<h2>Worlds</h2><p class="sub">${worlds.length} world file(s)</p>
+    <div class="toolbar"><input id="wsearch" placeholder="Search name / owner…" oninput="filterWorlds()"></div>
+    <div id="wtable"></div>`;
+  filterWorlds();
+}
+function filterWorlds(){
+  const q=($('#wsearch').value||'').toLowerCase();
+  const list=state.worlds.filter(w=>!q||w.name.toLowerCase().includes(q)||String(w.owner).toLowerCase().includes(q));
+  const dim=w=>(w.width&&w.height)?(w.width+'×'+w.height):'-';
+  const rows=list.map(w=>`<tr onclick="openWorld('${esc(w.file)}')"><td>${esc(w.name)}</td><td>${esc(w.owner)}</td><td>${w.blocks.toLocaleString()}</td><td>${dim(w)}</td></tr>`).join('');
+  const cards=list.map(w=>`<div class="rowcard" onclick="openWorld('${esc(w.file)}')"><div class="t">${esc(w.name)}</div>
+    <div class="kv"><span>Owner: <b>${esc(w.owner)}</b></span><span>Blocks: <b>${w.blocks.toLocaleString()}</b></span><span>Size: <b>${dim(w)}</b></span></div></div>`).join('');
+  $('#wtable').innerHTML=`<div class="count">${list.length} shown</div>
+    <div class="tablewrap"><table><thead><tr><th>Name</th><th>Owner</th><th>Blocks</th><th>Size</th></tr></thead><tbody>${rows||'<tr><td colspan=4>No worlds</td></tr>'}</tbody></table></div>
+    <div class="cardlist">${cards||'<p class="sub">No worlds</p>'}</div>`;
+}
+async function openWorld(file){
+  const r=await api('/api/world?file='+encodeURIComponent(file));const s=r.summary;
+  showModal(`<div class="mhead"><div><h3>${esc(s.name)}</h3><div class="meta">${esc(file)}</div></div><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="grid2">
+      <div class="pill"><small>Owner</small> <b>${esc(s.owner)}</b></div>
+      <div class="pill"><small>Blocks</small> <b>${s.blocks.toLocaleString()}</b></div>
+      <div class="pill"><small>Size</small> <b>${(s.width&&s.height)?(s.width+' × '+s.height):'—'}</b></div>
+    </div>
+    <label style="margin-top:14px">World JSON (blocks array summarized)</label>
+    <textarea rows="16" readonly>${esc(JSON.stringify(r.data,null,2))}</textarea>
+    <div class="btnrow" style="margin-top:12px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
+}
+
+/* ---------- Generic dir editor (json/text) ---------- */
+async function renderDir(m,dir,title,isJson){
+  const {files}=await api('/api/list?dir='+encodeURIComponent(dir));
+  const rows=files.map(f=>`<tr onclick="openFile('${esc(dir)}/${esc(f.name)}','${isJson}')"><td>${esc(f.name)}</td><td>${fmtSize(f.size)}</td><td>${fmtTime(f.mtime)}</td></tr>`).join('');
+  const cards=files.map(f=>`<div class="rowcard" onclick="openFile('${esc(dir)}/${esc(f.name)}','${isJson}')"><div class="t">${esc(f.name)}</div><div class="kv"><span>${fmtSize(f.size)}</span><span>${fmtTime(f.mtime)}</span></div></div>`).join('');
+  m.innerHTML=`<h2>${esc(title)}</h2><p class="sub">${files.length} file(s) in ${esc(dir)}</p>
+    <div class="tablewrap"><table><thead><tr><th>Name</th><th>Size</th><th>Modified</th></tr></thead><tbody>${rows||'<tr><td colspan=3>No files</td></tr>'}</tbody></table></div>
+    <div class="cardlist">${cards||'<p class="sub">No files</p>'}</div>`;
+}
+async function openFile(relpath,isJson){
+  isJson=(isJson===true||isJson==='true');
+  const r=await api('/api/file?path='+encodeURIComponent(relpath));
+  showModal(`<div class="mhead"><div><h3>${esc(relpath.split('/').pop())}</h3><div class="meta">${esc(relpath)}</div></div><button class="x" onclick="closeModal()">&times;</button></div>
+    <textarea id="fed" rows="18">${esc(r.content)}</textarea>
+    <div class="btnrow" style="margin-top:12px">
+      ${isJson?'<button class="btn ghost sm" onclick="beautify(\'fed\')">Beautify</button>':''}
+      <span class="count" id="fedc"></span>
+    </div>
+    <div class="btnrow"><button class="btn" onclick="saveFile('${esc(relpath)}',${isJson})">Save</button>
+      <button class="btn danger" onclick="delFile('${esc(relpath)}')">Delete</button>
+      <button class="btn ghost" onclick="closeModal()">Close</button></div>`);
+  updateCount('fed','fedc');$('#fed').addEventListener('input',()=>updateCount('fed','fedc'));
+}
+async function saveFile(relpath,isJson){
+  const content=$('#fed').value;
+  if(isJson){try{JSON.parse(content);}catch(e){return toast('Invalid JSON: '+e.message,'err');}}
+  try{await api('/api/file',{method:'POST',body:JSON.stringify({path:relpath,content})});
+    toast('Saved','ok');closeModal();const cur=document.querySelector('#nav a.active');if(cur)render(cur.dataset.view);
+  }catch(e){toast(e.message,'err');}
+}
+async function delFile(relpath){
+  if(!confirm('Delete '+relpath+'? (a backup is kept)'))return;
+  try{await api('/api/file?path='+encodeURIComponent(relpath),{method:'DELETE'});
+    toast('Deleted','ok');closeModal();const cur=document.querySelector('#nav a.active');if(cur)render(cur.dataset.view);
+  }catch(e){toast(e.message,'err');}
+}
+
+/* ---------- Roles ---------- */
+async function renderRoles(m){
+  const rel='database/roles.xaml';
+  const r=await api('/api/file?path='+encodeURIComponent(rel));
+  m.innerHTML=`<h2>Roles</h2><p class="sub">${esc(rel)}</p>
+    <textarea id="fed" rows="22">${esc(r.content)}</textarea>
+    <div class="btnrow" style="margin-top:12px"><span class="count" id="fedc"></span></div>
+    <div class="btnrow"><button class="btn" onclick="saveFile('${esc(rel)}',false)">Save</button></div>`;
+  updateCount('fed','fedc');$('#fed').addEventListener('input',()=>updateCount('fed','fedc'));
+}
+
+/* ---------- Backups ---------- */
+async function renderBackups(m){
+  m.innerHTML=`<h2>Backup Manager</h2><p class="sub">List &amp; restore automatic .bak-* snapshots</p>
+    <div class="toolbar">
+      <select id="bkdir" onchange="loadBackupFiles()">
+        <option value="database/json">database/json</option>
+        <option value="database/players">database/players</option>
+        <option value="database/worlds">database/worlds</option>
+        <option value="database/text">database/text</option>
+      </select>
+      <select id="bkfile" onchange="loadBackups()"></select>
+    </div>
+    <div id="bklist"><p class="sub">Select a file.</p></div>`;
+  loadBackupFiles();
+}
+async function loadBackupFiles(){
+  const dir=$('#bkdir').value;
+  try{const {files}=await api('/api/list?dir='+encodeURIComponent(dir));
+    $('#bkfile').innerHTML='<option value="">— select file —</option>'+files.map(f=>`<option value="${esc(dir)}/${esc(f.name)}">${esc(f.name)}</option>`).join('');
+    $('#bklist').innerHTML='<p class="sub">Select a file.</p>';
+  }catch(e){toast(e.message,'err');}
+}
+async function loadBackups(){
+  const rel=$('#bkfile').value;if(!rel){$('#bklist').innerHTML='<p class="sub">Select a file.</p>';return;}
+  try{const r=await api('/api/backups?path='+encodeURIComponent(rel));
+    if(!r.backups.length){$('#bklist').innerHTML='<p class="sub">No backups for this file.</p>';return;}
+    const rows=r.backups.map(b=>`<tr><td>${esc(b.name.split('.bak-')[1]||b.name)}</td><td>${fmtSize(b.size)}</td><td>${fmtTime(b.mtime)}</td>
+      <td><button class="btn danger sm" onclick="restore('${esc(rel)}','${esc(b.name)}')">Restore</button></td></tr>`).join('');
+    const cards=r.backups.map(b=>`<div class="rowcard"><div class="t">${esc(b.name.split('.bak-')[1]||b.name)}</div>
+      <div class="kv"><span>${fmtSize(b.size)}</span><span>${fmtTime(b.mtime)}</span></div>
+      <div style="margin-top:10px"><button class="btn danger sm" onclick="restore('${esc(rel)}','${esc(b.name)}')">Restore</button></div></div>`).join('');
+    $('#bklist').innerHTML=`<div class="count">${r.backups.length} backup(s)</div>
+      <div class="tablewrap"><table><thead><tr><th>Snapshot</th><th>Size</th><th>Created</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="cardlist">${cards}</div>`;
+  }catch(e){toast(e.message,'err');}
+}
+async function restore(rel,backup){
+  if(!confirm('Restore this backup over the live file? Current version is snapshotted first.'))return;
+  try{await api('/api/restore',{method:'POST',body:JSON.stringify({path:rel,backup})});
+    toast('Restored','ok');loadBackups();
+  }catch(e){toast(e.message,'err');}
+}
+
+/* ---------- helpers ---------- */
+function beautify(id){const t=$('#'+id);try{t.value=JSON.stringify(JSON.parse(t.value),null,2);toast('Beautified','ok');updateCount(id,id+'c');}catch(e){toast('Invalid JSON: '+e.message,'err');}}
+function updateCount(taId,cId){const el=$('#'+cId);if(!el)return;const v=$('#'+taId).value;const lines=v?v.split('\n').length:0;const words=v.trim()?v.trim().split(/\s+/).length:0;el.textContent=lines+' lines · '+words+' words · '+v.length+' chars';}
+function showModal(html){let mo=$('#modal');if(!mo){mo=document.createElement('div');mo.id='modal';mo.className='modal';mo.onclick=e=>{if(e.target===mo)closeModal();};document.body.appendChild(mo);}mo.innerHTML='<div class="box">'+html+'</div>';}
+function closeModal(){const mo=$('#modal');if(mo)mo.remove();}
+
+/* ---------- boot ---------- */
+(async function(){
+  try{const c=await api('/api/csrf');CSRF=c.token;}catch(e){}
+  try{const info=await api('/api/info');$('#whoami').textContent=info.user||'admin';}catch(e){}
+  render('dashboard');
+})();
 </script>
 </body>
 </html>
