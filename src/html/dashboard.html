@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Dashboard</title>
+    <style>
+        :root { --primary: #4CAF50; --bg: #1a1a1a; --sidebar-bg: #252525; --card-bg: #2d2d2d; --input-bg: #333; --border: #444; --danger: #e53935; --creator: #FFD700; --info: #2196F3; }
+        
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #e0e0e0; margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-header { padding: 25px 20px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+        .sidebar-header h2 { margin: 0; font-size: 22px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .nav-item { padding: 15px 25px; cursor: pointer; color: #aaa; transition: all 0.2s; border-left: 4px solid transparent; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(76, 175, 80, 0.1); color: var(--primary); border-left-color: var(--primary); }
+        .nav-spacer { flex: 1; }
+        .nav-footer { padding: 20px; font-size: 12px; color: #555; text-align: center; }
+
+        /* Content */
+        .main-content { flex: 1; overflow-y: auto; padding: 30px; position: relative; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* Tabs */
+        .tab-pane { display: none; animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tab-pane.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Components */
+        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); border: 1px solid #333; }
+        h1, h2 { margin-top: 0; color: var(--primary); font-weight: 600; letter-spacing: 0.5px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        
+        /* Buttons */
+        button { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; width: 100%; transition: all 0.2s; }
+        button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        button.danger { background: var(--danger); }
+        button.warn { background: #ff9800; color: #222; }
+        button.ai-btn { background: linear-gradient(135deg, #9C27B0, #673AB7); }
+        button.blue-btn { background: #2196F3; }
+
+        /* Forms */
+        .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 5px; }
+        .form-group label { display: block; color: #aaa; margin-bottom: 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .form-control { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--border); color: #fff; padding: 12px; border-radius: 6px; font-size: 14px; transition: border-color 0.3s; }
+        .form-control:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2); }
+        .full-width { grid-column: span 2; }
+
+        /* Player Control Specifics */
+        .player-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: 600px; }
+        .player-list-box { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+        .player-search-bar { padding: 10px; border-bottom: 1px solid var(--border); }
+        .player-list { flex: 1; overflow-y: auto; padding: 5px; }
+        .player-item { padding: 10px; cursor: pointer; border-radius: 4px; color: #ccc; transition: background 0.1s; display: flex; justify-content: space-between; align-items: center; }
+        .player-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .player-item.active { background: rgba(33, 150, 243, 0.2); color: var(--info); border-left: 3px solid var(--info); }
+        
+        .player-editor { overflow-y: auto; padding-right: 5px; position: relative; }
+        .editor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .editor-group { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid #333; }
+        .editor-group label { display: block; font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+        .editor-input { width: 100%; background: transparent; border: none; color: #fff; font-family: monospace; font-size: 14px; outline: none; border-bottom: 1px solid #444; padding-bottom: 2px; }
+        .editor-input:focus { border-bottom-color: var(--primary); }
+        .editor-bool { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+        .editor-bool span { font-size: 14px; font-family: monospace; }
+
+        /* Tags */
+        .tag-container { display: flex; flex-wrap: wrap; gap: 8px; background: var(--input-bg); border: 1px solid var(--border); padding: 8px; border-radius: 6px; min-height: 45px; }
+        .tag { background: #3949ab; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; }
+        .tag.blocked { background: var(--danger); } 
+        .tag.creator { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; font-weight: bold; border: 1px solid #fff; }
+        .tag span { margin-left: 8px; cursor: pointer; font-weight: bold; opacity: 0.7; }
+
+        /* Toasts */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: #333; color: #fff; padding: 16px 24px; border-radius: 8px; border-left: 5px solid var(--primary); box-shadow: 0 6px 20px rgba(0,0,0,0.4); animation: slideIn 0.4s; }
+        .toast.error { border-left-color: #f44336; }
+        @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Switch */
+        .toggle-wrapper { display: flex; align-items: center; justify-content: space-between; background: var(--input-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border); }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-on { background-color: #4CAF50; color: #4CAF50; }
+        .ai-response { background: #222; border-left: 4px solid #9C27B0; padding: 20px; margin-top: 15px; border-radius: 0 6px 6px 0; display: none; white-space: pre-wrap; line-height: 1.6; }
+
+        @media (max-width: 800px) { body { flex-direction: column; height: auto; overflow: auto; } .sidebar { width: 100%; flex-direction: row; } .config-grid { grid-template-columns: 1fr; } .player-layout { grid-template-columns: 1fr; height: auto; } }
+    </style>
+</head>
+<body>
+    <div id="toast-container"></div>
+
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2><span class="status-dot status-on"></span> DASHBOARD</h2>
+        </div>
+        <div class="nav-item active" id="nav-http" onclick="switchTab('http')"><span>🌐 HTTP Server</span></div>
+        <div class="nav-item" id="nav-players" onclick="switchTab('players')"><span>👤 Players Control</span></div>
+        <div class="nav-item" id="nav-logs" onclick="switchTab('logs')"><span>📜 System Logs</span></div>
+        <div class="nav-spacer"></div>
+        <div class="nav-footer">Admin Panel v4.22</div>
+    </nav>
+
+    <main class="main-content">
+        <!-- TAB 1: HTTP -->
+        <div id="tab-http" class="tab-pane active">
+            <div class="container">
+                <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div><h1 style="margin-bottom: 5px;">HTTP Server Control</h1><p id="serverInfo" style="margin: 0; color: #888;">Connecting...</p></div>
+                    <div style="text-align: right;"><small style="color:#666;">STATUS</small><br><span style="color: #4CAF50; font-weight: bold;">ONLINE</span></div>
+                </div>
+
+                <div class="grid">
+                    <div class="stat-box"><div class="stat-value" id="uptime">0s</div><div class="stat-label">Uptime</div></div>
+                    <div class="stat-box"><div class="stat-value" id="ram">0 MB</div><div class="stat-label">RAM Usage</div></div>
+                    <div class="stat-box"><div class="stat-value" id="missingFiles">0</div><div class="stat-label">Missing Files</div></div>
+                    <div class="stat-box"><div class="stat-value" id="blocked">0</div><div class="stat-label">Blocked Requests</div></div>
+                </div>
+                <br>
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;"><h2>⚙️ Configuration</h2><button class="blue-btn" style="width: auto; padding: 8px 16px;" onclick="saveConfig()">💾 Save Changes</button></div>
+                    <div class="config-grid">
+                        <div class="form-group"><label>Server IP</label><input type="text" id="conf_ip" class="form-control"></div>
+                        <div class="form-group"><label>Login URL</label><input type="text" id="conf_url_login" class="form-control"></div>
+                        <div class="form-group"><label>TCP Port</label><input type="number" id="conf_port_tcp" class="form-control"></div>
+                        <div class="form-group"><label>UDP Port</label><input type="number" id="conf_port_udp" class="form-control"></div>
+                        <div class="form-group full-width"><label>Meta Description</label><input type="text" id="conf_meta" class="form-control"></div>
+                        <div class="form-group full-width"><label>Player Database Path</label><input type="text" id="conf_player_db" class="form-control" placeholder="../server/x64/Release/database/players"></div>
+                        <div class="form-group full-width"><label>Admin Access</label><div style="display: flex; gap: 10px; margin-bottom: 10px;"><input type="text" id="adminIpInput" class="form-control" placeholder="IP Address" style="flex: 2;"><input type="text" id="adminNameInput" class="form-control" placeholder="Name" style="flex: 1;"><button class="blue-btn" style="width: auto;" onclick="addAdmin()">Add</button></div><div class="tag-container" id="adminIpsContainer"></div></div>
+                        <div class="form-group"><label>Gemini API Key</label><input type="password" id="conf_gemini_key" class="form-control"></div>
+                        <div class="form-group"><label>Advanced Settings</label><div class="toggle-wrapper"><span>Spoof Missing Files</span><label class="toggle-switch"><input type="checkbox" id="conf_spoof"><span class="slider"></span></label></div></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>🛡️ Security Management</h2>
+                    <div class="config-grid">
+                        <div class="form-group"><label>Blocked IPs</label><div style="display: flex; gap: 10px; margin-bottom: 8px;"><input type="text" id="ipToBlock" class="form-control" placeholder="1.2.3.4"><button class="danger" style="width: auto;" onclick="blockIP()">Block</button></div><div class="tag-container" id="blockedIpsContainer" style="background: #252525;"></div></div>
+                        <div class="form-group"><label>Blocked Countries</label><div style="display: flex; gap: 10px; margin-bottom: 8px;"><input type="text" id="countryToBlock" class="form-control" placeholder="CN"><button class="danger" style="width: auto;" onclick="blockCountry()">Block</button></div><div class="tag-container" id="blockedCountriesContainer" style="background: #252525;"></div></div>
+                    </div>
+                </div>
+                <div class="card" style="border: 1px solid #7B1FA2;">
+                    <h2 style="color: #BA68C8;">✨ AI Administrator</h2>
+                    <div id="aiWarning" style="color: #ff9800; font-size: 14px; margin-bottom: 15px; display: none;">⚠️ Gemini API Key Missing!</div>
+                    <div class="grid"><button class="ai-btn" onclick="generateReport()">📄 Generate Report</button><button class="ai-btn" style="background: #333;" onclick="clearAiOutput()">Clear</button></div>
+                    <div id="reportOutput" class="ai-response"></div>
+                    <hr style="border-color: #444; margin: 25px 0;">
+                    <div class="form-group"><label>Ask AI</label><div style="display: flex; gap: 10px;"><input type="text" id="aiQuery" class="form-control" placeholder="Ask about server logs..."><button class="ai-btn" style="width: auto;" onclick="askAI()">Ask</button></div></div>
+                    <div id="chatOutput" class="ai-response"></div>
+                </div>
+                <div class="card">
+                    <h2>⚡ Quick Actions</h2>
+                    <div class="grid"><button class="warn" onclick="clearLogs()">🧹 Clear Logs</button><button class="danger" onclick="reloadServer()">🔄 Reload System</button></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: PLAYER CONTROL -->
+        <div id="tab-players" class="tab-pane">
+            <div class="container">
+                <div class="card" style="padding-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 15px; margin-bottom: 15px;">
+                        <div>
+                            <h1 style="margin: 0;">👤 Players Control</h1>
+                            <p style="color: #aaa; margin: 0; font-size: 14px;">Manage player database files.</p>
+                        </div>
+                        <div id="totalPlayersBadge" style="background: var(--info); color: white; padding: 8px 15px; border-radius: 4px; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">Total: 0</div>
+                    </div>
+                    
+                    <div class="player-layout">
+                        <!-- LEFT: LIST -->
+                        <div class="player-list-box">
+                            <div class="player-search-bar">
+                                <input type="text" id="playerListFilter" class="form-control" style="margin:0; padding:10px;" placeholder="Search list..." onkeyup="filterPlayerList()">
+                            </div>
+                            <div class="player-list" id="playerList">
+                                <div style="color: #666; padding: 20px; text-align: center;">Loading...</div>
+                            </div>
+                            <div style="padding: 10px; border-top: 1px solid var(--border); text-align: center; background: rgba(0,0,0,0.2);">
+                                <button class="blue-btn" style="padding: 8px; font-size: 13px; width: 100%;" onclick="refreshPlayerList()">🔄 Refresh List</button>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: EDITOR -->
+                        <div class="player-editor">
+                            <div id="editorPlaceholder" style="text-align: center; color: #555; margin-top: 100px;">
+                                <div style="font-size: 40px; margin-bottom: 10px;">👤</div>
+                                <p>Select a player from the list to edit details.</p>
+                            </div>
+
+                            <div id="playerEditorUI" style="display: none;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; position: sticky; top: 0; background: var(--card-bg); z-index: 10;">
+                                    <h2 id="edit_name" style="margin: 0; color: var(--info);"></h2>
+                                    <button class="blue-btn" style="width: auto; padding: 8px 25px;" onclick="savePlayerChanges()">💾 Save Changes</button>
+                                </div>
+
+                                <div class="editor-grid" id="editorGrid">
+                                    <!-- Dynamic Inputs will go here -->
+                                </div>
+                                <div style="margin-top: 20px; color: #666; font-size: 12px; border-top: 1px solid #444; padding-top: 10px;">
+                                    Inventory Count: <span id="invCount" style="color: #fff; font-weight: bold;">0</span> (Items cannot be edited here to prevent data corruption)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: LOGS -->
+        <div id="tab-logs" class="tab-pane">
+            <div class="container">
+                <div class="card"><h1>📜 System Logs</h1><div style="background: #111; color: #aaa; font-family: monospace; padding: 20px; border-radius: 6px; height: 400px;">Log viewer coming soon...</div></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let hasGemini = false;
+        let configLoaded = false;
+        let allPlayers = [];
+        let currentPlayer = null;
+        let adminIps = [];
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-' + tabId).classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            if(tabId === 'players') refreshPlayerList();
+        }
+
+        function showToast(message, type = "success") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            const timeout = setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 3500);
+            toast.onclick = () => { clearTimeout(timeout); toast.remove(); };
+            container.appendChild(toast);
+        }
+
+        function formatUptime(seconds) {
+            const d = Math.floor(seconds / (3600*24));
+            const h = Math.floor(seconds % (3600*24) / 3600);
+            const m = Math.floor(seconds % 3600 / 60);
+            const s = Math.floor(seconds % 60);
+            if (d > 0) return `${d}d ${h}h ${m}m`;
+            if (h > 0) return `${h}h ${m}m ${s}s`;
+            return `${m}m ${s}s`;
+        }
+
+        function renderAdminTags() {
+            const container = document.getElementById('adminIpsContainer');
+            container.innerHTML = '';
+            adminIps.forEach((item, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'tag';
+                let ip = typeof item === 'string' ? item : (item ? item.ip : '');
+                let name = (typeof item === 'object' && item.name) ? item.name : 'Admin';
+                if (!ip) return;
+                let displayText = `${name} (${ip})`;
+                if(String(ip).trim() === '178.135.20.156' || name === '👑 Creator') { tag.classList.add('creator'); displayText = '👑 Creator'; }
+                tag.innerHTML = `${displayText} <span onclick="removeAdminTag(${index})">×</span>`;
+                container.appendChild(tag);
+            });
+        }
+        function removeAdminTag(index) { adminIps.splice(index, 1); renderAdminTags(); }
+        function addAdmin() {
+            const ip = document.getElementById('adminIpInput').value.trim();
+            const name = document.getElementById('adminNameInput').value.trim() || 'Admin';
+            if(!ip) return showToast("IP Required", "warn");
+            const exists = adminIps.some(a => { const existingIp = typeof a === 'string' ? a : a.ip; return existingIp === ip; });
+            if(exists) return showToast("Exists", "warn");
+            adminIps.push({ ip: ip, name: name });
+            document.getElementById('adminIpInput').value = ''; renderAdminTags();
+        }
+
+        function renderBlockedTags(list, containerId, removeFnName) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; 
+            list.forEach(item => {
+                const tag = document.createElement('div');
+                tag.className = 'tag blocked';
+                tag.innerHTML = `${item} <span onclick="${removeFnName}('${item}')">×</span>`;
+                container.appendChild(tag);
+            });
+            if(list.length === 0) container.innerHTML = '<span style="color:#666;font-size:12px;padding:5px;">None</span>';
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/admin/stats');
+                if (res.status === 403) return document.body.innerHTML = "<h1>Access Denied</h1>";
+                const data = await res.json();
+                
+                document.getElementById('serverInfo').innerText = `${data.config.meta} | Port ${data.config.port_tcp}`;
+                document.getElementById('uptime').innerText = formatUptime(data.uptime);
+                document.getElementById('ram').innerText = data.ram + " MB";
+                document.getElementById('missingFiles').innerText = data.cache_count;
+                document.getElementById('blocked').innerText = data.ips_blocked + " / " + data.countries_blocked;
+                
+                renderBlockedTags(data.blocked_ips_list, 'blockedIpsContainer', 'unblockIP');
+                renderBlockedTags(data.blocked_countries_list, 'blockedCountriesContainer', 'unblockCountry');
+
+                if (!configLoaded) {
+                    const c = data.config;
+                    document.getElementById('conf_ip').value = c.ip || "";
+                    document.getElementById('conf_port_tcp').value = c.port_tcp || 443;
+                    document.getElementById('conf_port_udp').value = c.port_udp || 17091;
+                    document.getElementById('conf_url_login').value = c.url_login || "";
+                    document.getElementById('conf_meta').value = c.meta || "";
+                    document.getElementById('conf_gemini_key').value = c.gemini_key || "";
+                    document.getElementById('conf_spoof').checked = !!c.spoof_missing_files;
+                    document.getElementById('conf_player_db').value = c.player_db_path || "../server/x64/Release/database/players";
+                    adminIps = Array.isArray(c.admin_ips) ? JSON.parse(JSON.stringify(c.admin_ips)) : [];
+                    renderAdminTags();
+                    configLoaded = true;
+                }
+                hasGemini = data.has_gemini;
+                document.getElementById('aiWarning').style.display = hasGemini ? 'none' : 'block';
+            } catch(e) { console.error(e); }
+        }
+
+        async function saveConfig() {
+            const newConfig = {
+                ip: document.getElementById('conf_ip').value,
+                port_tcp: parseInt(document.getElementById('conf_port_tcp').value),
+                port_udp: parseInt(document.getElementById('conf_port_udp').value),
+                url_login: document.getElementById('conf_url_login').value,
+                meta: document.getElementById('conf_meta').value,
+                gemini_key: document.getElementById('conf_gemini_key').value,
+                spoof_missing_files: document.getElementById('conf_spoof').checked,
+                player_db_path: document.getElementById('conf_player_db').value,
+                admin_ips: adminIps
+            };
+            const res = await fetch('/api/admin/save_config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newConfig) });
+            const data = await res.json();
+            if (data.success) { showToast("✅ Saved!"); configLoaded = false; fetchStats(); } else { showToast("❌ Error: " + data.error, "error"); }
+        }
+
+        // --- NEW PLAYER CONTROL LOGIC ---
+        async function refreshPlayerList() {
+            const listEl = document.getElementById('playerList');
+            listEl.innerHTML = '<div style="color:#666; text-align:center; margin-top:20px;">Fetching...</div>';
+            
+            try {
+                const res = await fetch('/api/admin/player/list');
+                const data = await res.json();
+                
+                if(data.success) {
+                    allPlayers = data.players;
+                    document.getElementById('totalPlayersBadge').innerText = "Total: " + data.count;
+                    filterPlayerList(); 
+                } else {
+                    listEl.innerHTML = '<div style="color:var(--danger); text-align:center;">Failed to load list</div>';
+                }
+            } catch(e) {
+                listEl.innerHTML = '<div style="color:var(--danger); text-align:center;">Error connecting</div>';
+            }
+        }
+
+        function filterPlayerList() {
+            const query = document.getElementById('playerListFilter').value.toLowerCase();
+            const listEl = document.getElementById('playerList');
+            listEl.innerHTML = '';
+            
+            const filtered = allPlayers.filter(p => p.toLowerCase().includes(query));
+            
+            filtered.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'player-item';
+                item.innerText = p;
+                item.onclick = () => selectPlayer(p, item);
+                listEl.appendChild(item);
+            });
+            
+            if(filtered.length === 0) listEl.innerHTML = '<div style="color:#555;padding:20px;text-align:center;">No players found</div>';
+        }
+
+        async function selectPlayer(name, element) {
+            document.querySelectorAll('.player-item').forEach(el => el.classList.remove('active'));
+            if(element) element.classList.add('active');
+
+            // Use the /get endpoint which now returns editable data
+            const res = await fetch('/api/admin/player/get', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name }) });
+            const result = await res.json();
+
+            if(result.success) {
+                currentPlayer = { name: name, data: result.data };
+                document.getElementById('editorPlaceholder').style.display = 'none';
+                document.getElementById('playerEditorUI').style.display = 'block';
+                document.getElementById('edit_name').innerText = name;
+                document.getElementById('invCount').innerText = result.meta.inventory_count;
+                
+                renderEditor(result.data);
+            } else {
+                showToast("Error loading player: " + result.error, "error");
+            }
+        }
+
+        function renderEditor(data) {
+            const grid = document.getElementById('editorGrid');
+            grid.innerHTML = '';
+
+            for (const [key, value] of Object.entries(data)) {
+                const group = document.createElement('div');
+                group.className = 'editor-group';
+                
+                if(typeof value === 'boolean') {
+                    const isChecked = value ? 'checked' : '';
+                    const color = value ? '#4CAF50' : '#f44336';
+                    group.innerHTML = `
+                        <label>${key}</label>
+                        <div class="editor-bool" onclick="toggleBool(this)">
+                            <span style="color:${color}; font-weight:bold;">${value.toString().toUpperCase()}</span>
+                            <input type="checkbox" class="player-input" data-key="${key}" ${isChecked} style="display:none;">
+                            <span style="font-size:12px; color:#666; margin-left: 5px;">(Click to toggle)</span>
+                        </div>
+                    `;
+                } else {
+                    let valStr = value;
+                    if(typeof value === 'object' && value !== null) valStr = JSON.stringify(value);
+                    
+                    group.innerHTML = `
+                        <label>${key}</label>
+                        <input type="text" class="editor-input player-input" data-key="${key}" value='${valStr !== undefined ? valStr : ""}'>
+                    `;
+                }
+                grid.appendChild(group);
+            }
+        }
+
+        function toggleBool(el) {
+            const input = el.querySelector('input');
+            const span = el.querySelector('span:first-child');
+            input.checked = !input.checked;
+            span.innerText = input.checked.toString().toUpperCase();
+            span.style.color = input.checked ? '#4CAF50' : '#f44336';
+        }
+
+        async function savePlayerChanges() {
+            if(!currentPlayer) return;
+            const inputs = document.querySelectorAll('.player-input');
+            const updatedData = {};
+
+            try {
+                inputs.forEach(input => {
+                    const key = input.getAttribute('data-key');
+                    let val = input.value;
+                    if(input.type === 'checkbox') {
+                        val = input.checked;
+                    } else {
+                        // Attempt to restore numbers and JSON
+                        if(!isNaN(val) && val.trim() !== '') {
+                            val = Number(val);
+                        } else if(val.startsWith('[') || val.startsWith('{')) {
+                            try { val = JSON.parse(val); } catch(e){}
+                        }
+                    }
+                    updatedData[key] = val;
+                });
+
+                const res = await fetch('/api/admin/player/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name: currentPlayer.name, data: updatedData })
+                });
+                
+                const result = await res.json();
+                if(result.success) showToast(`✅ Saved ${currentPlayer.name}`);
+                else showToast("❌ Error: " + result.error, "error");
+
+            } catch(e) { showToast("Save failed: " + e.message, "error"); }
+        }
+
+        async function blockIP() { const ip = document.getElementById('ipToBlock').value; const res = await fetch('/api/admin/block_ip', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ip }) }); if((await res.json()).success) { showToast(`Blocked ${ip}`); document.getElementById('ipToBlock').value = ""; fetchStats(); }}
+        async function unblockIP(ip) { if(!confirm(`Unblock ${ip}?`)) return; await fetch('/api/admin/unblock_ip', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ip }) }); showToast(`Unblocked`); fetchStats(); }
+        async function blockCountry() { const c = document.getElementById('countryToBlock').value; const res = await fetch('/api/admin/block_country', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ country: c }) }); if((await res.json()).success) { showToast(`Blocked ${c}`); document.getElementById('countryToBlock').value = ""; fetchStats(); }}
+        async function unblockCountry(c) { if(!confirm(`Unblock ${c}?`)) return; await fetch('/api/admin/unblock_country', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ country: c }) }); showToast(`Unblocked`); fetchStats(); }
+        async function askAI() { const query = document.getElementById('aiQuery').value; if (!query) return; const out = document.getElementById('chatOutput'); out.style.display = 'block'; out.innerText = "✨ Thinking..."; const res = await fetch('/api/admin/ai/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ query }) }); const data = await res.json(); out.innerText = data.text || data.error; }
+        async function generateReport() { const out = document.getElementById('reportOutput'); out.style.display = 'block'; out.innerText = "✨ Analyzing..."; const res = await fetch('/api/admin/ai/report', { method: 'POST' }); const data = await res.json(); out.innerText = data.text || data.error; }
+        function clearAiOutput() { document.getElementById('reportOutput').style.display = 'none'; document.getElementById('chatOutput').style.display = 'none'; }
+        async function reloadServer() { if(!confirm("Reload?")) return; await fetch('/api/admin/reload', { method: 'POST' }); showToast("Reloaded"); configLoaded = false; fetchStats(); }
+        async function clearLogs() { if(!confirm("Clear Logs?")) return; await fetch('/api/admin/clear_logs', { method: 'POST' }); showToast("Cleared"); }
+
+        setInterval(fetchStats, 2000);
+        fetchStats();
+    </script>
+</body>
+</html>

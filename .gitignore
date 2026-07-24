@@ -1,0 +1,10 @@
+node_modules/
+db/node_modules/
+db/cache/
+cache/
+db/ssl/
+db/logs/
+logs/
+*.log
+npm-debug.log*
+.DS_Store

@@ -1,0 +1,237 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GloryPs Admin Panel</title>
+<style>
+:root{
+  --bg:#0d0d0d; --panel:#141414; --panel2:#191919; --border:#262626;
+  --text:#e0e0e0; --muted:#8a939b; --accent:#3a4a5a; --accent2:#2e3d4d;
+  --ok:#4a6a55; --err:#7a4a4a; --warn:#6a5a3a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;display:flex;height:100vh;overflow:hidden}
+aside{width:230px;background:#101010;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.brand{padding:20px 18px;border-bottom:1px solid var(--border)}
+.brand h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.02em}
+.brand span{font-size:11px;color:var(--muted)}
+nav{flex:1;padding:10px 0;overflow:auto}
+nav a{display:block;padding:11px 20px;color:var(--muted);text-decoration:none;font-size:13px;border-left:3px solid transparent;cursor:pointer}
+nav a:hover{color:var(--text);background:#161616}
+nav a.active{color:var(--text);background:#181d22;border-left-color:var(--accent)}
+.sideft{padding:14px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+.sideft button{background:none;border:1px solid var(--border);color:var(--muted);border-radius:5px;padding:6px 12px;cursor:pointer;font-size:12px;width:100%}
+.sideft button:hover{color:var(--text);border-color:var(--accent)}
+main{flex:1;overflow:auto;padding:26px 30px}
+h2{font-size:17px;font-weight:600;margin:0 0 4px}
+p.sub{color:var(--muted);font-size:12px;margin:0 0 20px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid #1f1f1f;font-size:13px}
+th{background:var(--panel2);color:var(--muted);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#1a1f24}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:22px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px}
+.card .n{font-size:24px;font-weight:600}
+.card .l{font-size:12px;color:var(--muted);margin-top:2px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.dot.up{background:#4a6a55}.dot.down{background:#7a4a4a}
+textarea{width:100%;min-height:480px;background:#101010;border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:ui-monospace,Consolas,monospace;font-size:13px;padding:14px;outline:none;resize:vertical;tab-size:4}
+textarea:focus{border-color:var(--accent)}
+.toolbar{display:flex;gap:10px;align-items:center;margin:14px 0;flex-wrap:wrap}
+button.btn{background:var(--accent2);border:1px solid var(--accent);color:#dfe6ec;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer}
+button.btn:hover{background:#354657}
+button.btn.save{background:#31463a;border-color:#41584a}
+button.btn.save:hover{background:#3a5244}
+button.btn.danger{background:#3a2626;border-color:#5a3a3a}
+button.btn.danger:hover{background:#4a3030}
+button.btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}
+.crumb{font-size:12px;color:var(--muted);margin-bottom:10px}
+.crumb a{color:var(--accent);cursor:pointer;text-decoration:none}
+#toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;border:1px solid var(--border);background:var(--panel);max-width:420px}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--ok);color:#a9c4b2}
+#toast.err{border-color:var(--err);color:#c9a3a3}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--muted)}
+.kv{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 0;margin-top:10px}
+.kv .row{display:flex;padding:7px 16px;border-bottom:1px solid #1d1d1d;gap:14px}
+.kv .row:last-child{border-bottom:none}
+.kv .k{width:260px;flex-shrink:0;color:var(--muted);font-size:12px;padding-top:6px;word-break:break-all}
+.kv input,.kv select{flex:1;background:#101010;border:1px solid #222;border-radius:5px;color:var(--text);padding:6px 9px;font-size:12px;font-family:ui-monospace,Consolas,monospace;outline:none}
+.kv input:focus,.kv select:focus{border-color:var(--accent)}
+.badge{display:inline-block;background:#1c242c;border:1px solid var(--accent);color:#9db1c4;border-radius:4px;padding:2px 8px;font-size:11px;margin:2px 4px 2px 0}
+.search{background:#101010;border:1px solid #2c2c2c;border-radius:6px;color:var(--text);padding:8px 12px;font-size:13px;outline:none;width:240px}
+.search:focus{border-color:var(--accent)}
+.logline{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#9aa3aa;padding:5px 0;border-bottom:1px solid #1a1a1a;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand"><h1>GloryPs Admin</h1><span>server management</span></div>
+  <nav id="nav">
+    <a data-v="dashboard" class="active">Dashboard</a>
+    <a data-v="players">Players</a>
+    <a data-v="worlds">Worlds</a>
+    <a data-v="json">JSON Files</a>
+    <a data-v="roles">Roles.xaml</a>
+    <a data-v="text">Text Files</a>
+    <a data-v="logs">Audit Log</a>
+  </nav>
+  <div class="sideft"><div id="who" style="margin-bottom:8px"></div><button onclick="logout()">Log out</button></div>
+</aside>
+<main id="main"></main>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT;
+function toast(msg,ok=true){const t=$('#toast');t.textContent=msg;t.className='show '+(ok?'ok':'err');clearTimeout(toastT);toastT=setTimeout(()=>t.className='',2800);}
+async function api(url,opts){const r=await fetch(url,opts);if(r.status===401){location.href='/admin/login';throw new Error('auth');}const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
+async function logout(){await fetch('/admin/api/logout',{method:'POST'});location.href='/admin/login';}
+function fmtSize(b){return b>1048576?(b/1048576).toFixed(1)+' MB':b>1024?(b/1024).toFixed(1)+' KB':b+' B';}
+function confirmDlg(msg){return new Promise(r=>{if(confirm(msg))r(true);else r(false);});}
+
+const M=$('#main');
+document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>{document.querySelectorAll('#nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');views[a.dataset.v]();});
+
+async function fileTable(dir,title,sub,openFn,allowCreate){
+  M.innerHTML=`<h2>${title}</h2><p class="sub">${sub}</p>
+    <div class="toolbar"><input class="search" id="sf" placeholder="Filter files…"><span id="cnt" class="mono"></span>${allowCreate?'<button class="btn ghost" id="nf">+ New file</button>':''}</div>
+    <p class="mono">Loading…</p>`;
+  const {files}=await api('/admin/api/list?dir='+encodeURIComponent(dir));
+  const render=fl=>{
+    fl=fl.filter(f=>f.name.toLowerCase().includes(($('#sf').value||'').toLowerCase()));
+    $('#cnt').textContent=fl.length+' file(s)';
+    M.querySelector('p.sub').insertAdjacentHTML('afterend','');
+    const tbl=`<table><thead><tr><th>File</th><th>Size</th><th>Modified</th><th></th></tr></thead><tbody>${
+      fl.map(f=>`<tr data-f="${esc(f.name)}"><td>${esc(f.name)}</td><td>${fmtSize(f.size)}</td><td>${new Date(f.mtime).toLocaleString()}</td><td class="mono"><a class="crumb" data-del="${esc(f.name)}" style="color:#a97a7a">delete</a></td></tr>`).join('')
+    }</tbody></table>`;
+    const old=M.querySelector('table');if(old)old.remove();
+    M.insertAdjacentHTML('beforeend',tbl);
+    M.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=e=>{if(e.target.dataset.del)return;openFn(dir+'/'+tr.dataset.f);});
+    M.querySelectorAll('[data-del]').forEach(d=>d.onclick=async e=>{e.stopPropagation();if(await confirmDlg('Delete '+d.dataset.del+'? (a backup is kept)')){try{await api('/admin/api/file?path='+encodeURIComponent(dir+'/'+d.dataset.del),{method:'DELETE'});toast('Deleted '+d.dataset.del);views[Object.keys(views).find(k=>views[k]===arguments.callee)]&&0;}catch(err){toast(err.message,false);}}});
+  };
+  render(files);
+  $('#sf').oninput=()=>render(files);
+  if(allowCreate)$('#nf').onclick=async()=>{
+    const name=prompt('New file name (e.g. myfile.json):');if(!name)return;
+    try{await api('/admin/api/file/new',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dir,name,content:name.endsWith('.json')?'{}':''})});toast('Created '+name);views[dir==='database/json'?'json':dir==='database/text'?'text':'json']();}catch(e){toast(e.message,false);}
+  };
+}
+
+function editorView(rel,backView,backLabel,readonly=false){
+  return api('/admin/api/file?path='+encodeURIComponent(rel)).then(({content})=>{
+    M.innerHTML=`<div class="crumb"><a id="back">← ${backLabel}</a></div><h2>${esc(rel.split('/').pop())}</h2><p class="sub mono">${esc(rel)}</p>
+    <div class="toolbar">${readonly?'':`<button class="btn save" id="sv">Save</button><button class="btn ghost" id="fmt">Beautify</button>`}<span class="mono" id="st"></span></div>
+    <textarea id="ed" ${readonly?'readonly':''}></textarea>`;
+    const ed=$('#ed');ed.value=content;
+    $('#back').onclick=backView;
+    if(!readonly){
+      $('#fmt').onclick=()=>{if(rel.endsWith('.json')){try{ed.value=JSON.stringify(JSON.parse(ed.value),null,4);toast('Formatted');}catch(e){toast('Invalid JSON: '+e.message,false);}}else{toast('Only JSON supports beautify',false);}};
+      $('#sv').onclick=async()=>{
+        if(rel.endsWith('.json')){try{JSON.parse(ed.value);}catch(e){toast('Invalid JSON: '+e.message,false);return;}}
+        try{await api('/admin/api/file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:rel,content:ed.value})});$('#st').textContent='saved '+new Date().toLocaleTimeString();toast('Saved');}
+        catch(e){toast(e.message,false);}
+      };
+    }
+  }).catch(e=>toast(e.message,false));
+}
+
+const views={
+  async dashboard(){
+    M.innerHTML='<h2>Dashboard</h2><p class="sub">Server data overview</p><p class="mono">Loading…</p>';
+    const i=await api('/admin/api/info');
+    $('#who').textContent='Signed in as '+i.user;
+    const st=i.status||{};
+    M.innerHTML=`<h2>Dashboard</h2><p class="sub">Server data overview</p>
+    <div class="cards">
+      <div class="card"><div class="n">${i.counts.players}</div><div class="l">Players</div></div>
+      <div class="card"><div class="n">${i.counts.worlds}</div><div class="l">Worlds</div></div>
+      <div class="card"><div class="n">${i.counts.json}</div><div class="l">JSON files</div></div>
+      <div class="card"><div class="n">${i.counts.text}</div><div class="l">Text files</div></div>
+    </div>
+    <h2 style="font-size:14px">Service status</h2>
+    <div class="cards">
+      <div class="card"><div class="n" style="font-size:15px"><span class="dot ${st.game_udp&&st.game_udp.up?'up':'down'}"></span>Game (UDP ${st.game_udp?st.game_udp.port:'?'})</div><div class="l">${st.game_udp&&st.game_udp.up?'online':'offline'}</div></div>
+      <div class="card"><div class="n" style="font-size:15px"><span class="dot up"></span>HTTP (${st.http?st.http.port:'443'})</div><div class="l">admin panel live</div></div>
+    </div>
+    <h2 style="font-size:14px">Server path</h2>
+    <p class="mono">${esc(i.server_path)}</p>
+    <div>${i.database_subdirs.map(d=>`<span class="badge">${esc(d)}</span>`).join('')}</div>`;
+  },
+  players(){
+    M.innerHTML='<h2>Players</h2><p class="sub">All player accounts</p><p class="mono">Loading…</p>';
+    const {players}=await api('/admin/api/players');
+    M.innerHTML=`<h2>Players</h2><p class="sub">${players.length} account(s)</p>
+      <div class="toolbar"><input class="search" id="ps" placeholder="Search name…"><span id="cnt" class="mono"></span></div>
+      <table><thead><tr><th>Name</th><th>Gems</th><th>Role</th><th>Status</th><th>Keys</th></tr></thead><tbody>${
+        players.map(p=>`<tr data-f="database/players/${esc(p.file)}"><td>${esc(p.name)}</td><td>${p.gems}</td><td>${esc(p.role)}</td><td>${p.banned?'<span class="dot down"></span>banned':'<span class="dot up"></span>ok'}</td><td class="mono">${p.keys}</td></tr>`).join('')
+      }</tbody></table>`;
+    const filter=()=>{const q=$('#ps').value.toLowerCase();M.querySelectorAll('tbody tr').forEach(tr=>tr.style.display=tr.children[0].textContent.toLowerCase().includes(q)?'':'none');};
+    $('#ps').oninput=filter;
+    M.querySelector('tbody').querySelectorAll('tr').forEach(tr=>tr.onclick=()=>playerDetail(tr.dataset.f));
+  },
+  async worlds(){
+    M.innerHTML='<h2>Worlds</h2><p class="sub">All world files</p><p class="mono">Loading…</p>';
+    const {worlds}=await api('/admin/api/worlds');
+    M.innerHTML=`<h2>Worlds</h2><p class="sub">${worlds.length} world(s)</p>
+    <table><thead><tr><th>World Name</th><th>Owner</th><th>Blocks</th><th>File</th></tr></thead><tbody>${
+      worlds.map(w=>`<tr data-f="database/worlds/${esc(w.file)}"><td>${esc(w.name)}</td><td>${esc(w.owner)}</td><td class="mono">${w.blocks}</td><td class="mono">${esc(w.file)}</td></tr>`).join('')
+    }</tbody></table>`;
+    M.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>editorView(tr.dataset.f,views.worlds,'Worlds',true));
+  },
+  json(){fileTable('database/json','JSON Files','Server configuration JSON files',rel=>editorView(rel,views.json,'JSON Files'),true);},
+  roles(){editorView('database/roles.xaml',views.dashboard,'Dashboard');},
+  text(){fileTable('database/text','Text Files','Server text data files',rel=>editorView(rel,views.text,'Text Files'),true);},
+  async logs(){
+    M.innerHTML='<h2>Audit Log</h2><p class="sub">Recent admin actions</p><p class="mono">Loading…</p>';
+    const {lines}=await api('/admin/api/logs');
+    M.innerHTML=`<h2>Audit Log</h2><p class="sub">${lines.length} entr(y/ies)</p><div id="logbox">${
+      lines.map(l=>`<div class="logline">${esc(l)}</div>`).join('')||'<p class="mono">No entries yet.</p>'
+    }</div>`;
+  }
+};
+
+async function playerDetail(rel){
+  try{
+    const {content}=await api('/admin/api/file?path='+encodeURIComponent(rel));
+    let data; try{data=JSON.parse(content);}catch(e){return editorView(rel,views.players,'Players');}
+    M.innerHTML=`<div class="crumb"><a id="back">← Players</a></div><h2>${esc(rel.split('/').pop().replace('.json',''))}</h2><p class="sub mono">${esc(rel)}</p>
+    <div class="toolbar"><button class="btn save" id="sv">Save changes</button><button class="btn ghost" id="raw">Raw JSON editor</button><button class="btn danger" id="del">Delete player</button></div>
+    <div class="kv" id="kv"></div>`;
+    const kv=$('#kv');const keys=Object.keys(data);
+    keys.forEach(k=>{
+      const v=data[k];const simple=(typeof v==='string'||typeof v==='number'||typeof v==='boolean');
+      const row=document.createElement('div');row.className='row';
+      row.innerHTML=`<div class="k">${esc(k)}</div>`;
+      const inp=document.createElement(simple?'input':'input');
+      inp.value=simple?String(v):JSON.stringify(v);
+      inp.dataset.k=k;inp.dataset.mode=simple?typeof v:'json';
+      row.appendChild(inp);kv.appendChild(row);
+    });
+    $('#back').onclick=views.players;
+    $('#raw').onclick=()=>editorView(rel,views.players,'Players');
+    $('#del').onclick=async()=>{if(await confirmDlg('Delete player file? (backup kept)')){try{await api('/admin/api/file?path='+encodeURIComponent(rel),{method:'DELETE'});toast('Player deleted');views.players();}catch(e){toast(e.message,false);}}};
+    $('#sv').onclick=async()=>{
+      const out={};
+      for(const inp of kv.querySelectorAll('input')){
+        const k=inp.dataset.k,m=inp.dataset.mode,val=inp.value;
+        try{
+          if(m==='number'){const n=Number(val);if(Number.isNaN(n))throw 0;out[k]=n;}
+          else if(m==='boolean'){if(val!=='true'&&val!=='false')throw 0;out[k]=val==='true';}
+          else if(m==='json'){out[k]=JSON.parse(val);}
+          else out[k]=val;
+        }catch(e){toast('Invalid value for field "'+k+'"',false);return;}
+      }
+      try{await api('/admin/api/file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:rel,content:JSON.stringify(out,null,4)})});toast('Player saved');}
+      catch(e){toast(e.message,false);}
+    };
+  }catch(e){toast(e.message,false);}
+}
+
+views.dashboard();
+</script>
+</body>
+</html>
