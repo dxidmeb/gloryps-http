@@ -107,6 +107,17 @@ tbody tr:hover{background:#1a1f24}
 .modal .mhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
 .modal .x{background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;line-height:1}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* Player editor form */
+.pbody{max-height:70vh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-right:4px;margin:0 -2px}
+.pbody .section{margin-bottom:14px}
+.chkgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+label.chk{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;color:var(--text);cursor:pointer;word-break:break-word}
+label.chk input[type=checkbox]{width:auto;min-height:0;margin:0;flex-shrink:0;width:16px;height:16px;cursor:pointer}
+details.adv{border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:8px;background:#0f0f0f}
+details.adv summary{cursor:pointer;font-size:13px;color:var(--muted);word-break:break-all;list-style:revert}
+details.adv summary:hover{color:var(--text)}
+details.adv[open] summary{margin-bottom:8px;color:var(--text)}
+details.adv textarea{width:100%}
 
 /* Toast */
 #toast{position:fixed;right:18px;bottom:18px;z-index:80;display:flex;flex-direction:column;gap:8px;max-width:90vw}
@@ -126,6 +137,8 @@ tbody tr:hover{background:#1a1f24}
   .backdrop.show{display:block}
   main{padding:16px}
   .grid2{grid-template-columns:1fr}
+  .chkgrid{grid-template-columns:1fr}
+  .pbody{max-height:none}
   .cards{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
   table{display:none}
   .tablewrap{border:none}
@@ -307,38 +320,153 @@ function filterPlayers(){
     <div class="tablewrap"><table><thead><tr><th>Name</th><th>Gems</th><th>Role</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan=4>No players</td></tr>'}</tbody></table></div>
     <div class="cardlist">${cards||'<p class="sub">No players</p>'}</div>`;
 }
+/* Player editor: structured form built from the full fetched JSON object.
+   We keep the ORIGINAL data around so Save can overlay edits and preserve all keys. */
+const PLAYER_ROLES=['Role.Administrator','Role.BOOST','Role.Cheats','Role.Coder','Role.Developer','Role.Donatur','Role.God','Role.Moderator','Role.Owner_Server','Role.SUPER_BOOST','Role.Staff','Role.Streamers','Role.Unlimited','Role.Vip','Role.has_config_access'];
+const PLAYER_ACCOUNT_STR=['email','pass','ip'];
+let _playerData=null;      // original fetched object (source of truth)
+let _playerFile=null;
+
+function _valType(v){return Array.isArray(v)?'array':(v&&typeof v==='object')?'object':typeof v;}
+function _fieldId(key){return 'pf_'+key.replace(/[^\w]/g,'_');}
+
 async function openPlayer(file){
   const r=await api('/api/player?file='+encodeURIComponent(file));
-  const s=r.summary;
+  _playerData=r.data; _playerFile=file;
+  const d=r.data, s=r.summary;
+
+  // Account string fields present in this file
+  const accStr=PLAYER_ACCOUNT_STR.filter(k=>k in d);
+  const accStrHtml=accStr.map(k=>`<div><label>${esc(k)}</label><input id="${_fieldId(k)}" type="text" value="${esc(d[k])}"></div>`).join('');
+
+  // Roles checkboxes (only those present)
+  const rolesHtml=PLAYER_ROLES.filter(k=>k in d).map(k=>
+    `<label class="chk"><input type="checkbox" id="${_fieldId(k)}" ${d[k]?'checked':''}> ${esc(k.replace(/^Role\./,''))}</label>`).join('');
+
+  // Flags & Stats: other booleans + numbers (exclude the ones already shown / roles)
+  const shown=new Set(['name','gems','banned','ban_reason',...PLAYER_ACCOUNT_STR,...PLAYER_ROLES]);
+  const boolKeys=[], numKeys=[];
+  for(const k of Object.keys(d)){
+    if(shown.has(k)||k.startsWith('Role.'))continue;
+    const t=_valType(d[k]);
+    if(t==='boolean')boolKeys.push(k);
+    else if(t==='number')numKeys.push(k);
+  }
+  boolKeys.sort(); numKeys.sort();
+  const boolHtml=boolKeys.map(k=>`<label class="chk"><input type="checkbox" id="${_fieldId(k)}" ${d[k]?'checked':''}> ${esc(k)}</label>`).join('');
+  const numHtml=numKeys.map(k=>`<div><label>${esc(k)}</label><input id="${_fieldId(k)}" type="number" step="any" value="${esc(d[k])}"></div>`).join('');
+
+  // Advanced: arrays / objects as collapsible pretty-JSON textareas
+  const advKeys=Object.keys(d).filter(k=>{const t=_valType(d[k]);return t==='array'||t==='object';}).sort();
+  const advHtml=advKeys.map(k=>{
+    const rows=Math.min(14,Math.max(4,JSON.stringify(d[k],null,2).split('\n').length));
+    return `<details class="adv"><summary>${esc(k)} <span class="tag">${_valType(d[k])}</span></summary>
+      <textarea id="${_fieldId(k)}" data-adv="1" rows="${rows}">${esc(JSON.stringify(d[k],null,2))}</textarea></details>`;
+  }).join('');
+
   showModal(`
-    <div class="mhead"><div><h3>${esc(s.name)}</h3><div class="meta">${esc(file)}</div></div><button class="x" onclick="closeModal()">&times;</button></div>
-    <div class="grid2">
-      <div><label>Gems</label><input id="pg" type="number" value="${s.gems}"></div>
-      <div><label>Status</label><div style="padding-top:8px">${s.banned?'<span class="tag ban">BANNED</span>':'<span class="tag">Active</span>'} <span class="tag role">${esc(s.role)}</span></div></div>
+    <div class="mhead"><div><h3>${esc(s.name)}</h3><div class="meta">${esc(file)} · ${Object.keys(d).length} keys</div></div><button class="x" onclick="closeModal()">&times;</button></div>
+    <div class="pbody">
+      <div class="section">
+        <h3>Account</h3>
+        <div class="grid2">
+          <div><label>Name</label><input id="${_fieldId('name')}" type="text" value="${esc(d.name==null?'':d.name)}"></div>
+          <div><label>Gems</label><input id="${_fieldId('gems')}" type="number" step="any" value="${esc(d.gems==null?0:d.gems)}"></div>
+        </div>
+        <div class="grid2" style="margin-top:6px">
+          <div><label>Banned</label><div style="padding-top:6px"><label class="chk"><input type="checkbox" id="${_fieldId('banned')}" ${d.banned?'checked':''}> banned</label></div></div>
+          <div><label>Ban reason</label><input id="${_fieldId('ban_reason')}" type="text" value="${esc(d.ban_reason==null?'':d.ban_reason)}"></div>
+        </div>
+        ${accStr?`<div class="grid2" style="margin-top:6px">${accStrHtml}</div>`:''}
+        <div class="btnrow" style="margin-top:14px">
+          ${s.banned?`<button class="btn" onclick="playerAct('${esc(file)}','unban')">Quick Unban</button>`:`<button class="btn danger" onclick="playerAct('${esc(file)}','ban')">Quick Ban</button>`}
+          <span class="tag role">${esc(s.role)}</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Roles</h3>
+        <div class="chkgrid">${rolesHtml||'<span class="sub">no role fields</span>'}</div>
+      </div>
+
+      <div class="section">
+        <h3>Flags &amp; Stats</h3>
+        ${numKeys.length?`<div class="grid2">${numHtml}</div>`:''}
+        ${boolKeys.length?`<div class="chkgrid" style="margin-top:12px">${boolHtml}</div>`:''}
+        ${(!numKeys.length&&!boolKeys.length)?'<span class="sub">none</span>':''}
+      </div>
+
+      <div class="section">
+        <h3>Advanced</h3>
+        <p class="sub" style="margin:0 0 10px">structured data — edit carefully (must stay valid JSON)</p>
+        ${advHtml||'<span class="sub">none</span>'}
+      </div>
     </div>
     <div class="btnrow" style="margin-top:14px">
-      <button class="btn ok" onclick="playerAct('${esc(file)}','setgems',document.getElementById('pg').value)">Set Gems</button>
-      ${s.banned?`<button class="btn" onclick="playerAct('${esc(file)}','unban')">Unban</button>`:`<button class="btn danger" onclick="playerAct('${esc(file)}','ban')">Ban</button>`}
-    </div>
-    <label>Raw JSON (edit &amp; save)</label>
-    <textarea id="praw" rows="14">${esc(JSON.stringify(r.data,null,2))}</textarea>
-    <div class="btnrow" style="margin-top:12px">
-      <button class="btn ghost sm" onclick="beautify('praw')">Beautify</button>
-      <span class="count" id="prawc"></span>
-    </div>
-    <div class="btnrow"><button class="btn" onclick="savePlayerRaw('${esc(file)}')">Save JSON</button><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
-  updateCount('praw','prawc');$('#praw').addEventListener('input',()=>updateCount('praw','prawc'));
+      <button class="btn ok" onclick="savePlayer('${esc(file)}')">Save Changes</button>
+      <button class="btn ghost" onclick="closeModal()">Close</button>
+    </div>`);
 }
+
 async function playerAct(file,action,value){
   if(action==='ban'&&!confirm('Ban this player?'))return;
   try{await api('/api/player/update',{method:'POST',body:JSON.stringify({file,action,value})});
-    toast('Player updated','ok');closeModal();render('players');
+    toast('Player updated','ok');
+    if($('#modal'))openPlayer(file); // re-render editor if modal is open
+    else render('players');
   }catch(e){toast(e.message,'err');}
 }
-async function savePlayerRaw(file){
-  let obj;try{obj=JSON.parse($('#praw').value);}catch(e){return toast('Invalid JSON: '+e.message,'err');}
-  try{await api('/api/player/update',{method:'POST',body:JSON.stringify({file,action:'raw',value:obj})});
-    toast('Saved','ok');closeModal();render('players');
+
+/* Build the full edited object from original data + form edits, preserving all keys. */
+async function savePlayer(file){
+  if(!_playerData||_playerFile!==file){return toast('Player data not loaded','err');}
+  const out=JSON.parse(JSON.stringify(_playerData)); // clone all keys
+  const getEl=k=>document.getElementById(_fieldId(k));
+
+  // helper: set typed value preserving original type
+  const setTyped=(k)=>{
+    const el=getEl(k); if(!el)return;
+    const orig=_playerData[k], t=_valType(orig);
+    if(t==='boolean'){out[k]=el.checked;}
+    else if(t==='number'){
+      const n=Number(el.value);
+      if(!Number.isFinite(n)){throw new Error('Invalid number for "'+k+'"');}
+      out[k]=n;
+    } else { out[k]=el.value; } // string (and null-origin treated as string)
+  };
+
+  try{
+    // Account
+    if(getEl('name'))out.name=getEl('name').value;
+    if(getEl('gems')){const g=Number(getEl('gems').value);if(!Number.isFinite(g))throw new Error('Invalid gems');out.gems=g;}
+    // banned/ban_reason: only write if present originally or the user set them (avoids adding keys to files that lack them)
+    if(getEl('banned')&&('banned' in _playerData||getEl('banned').checked))out.banned=getEl('banned').checked;
+    if(getEl('ban_reason')&&('ban_reason' in _playerData||getEl('ban_reason').value!==''))out.ban_reason=getEl('ban_reason').value;
+    for(const k of PLAYER_ACCOUNT_STR){if(k in _playerData&&getEl(k))out[k]=getEl(k).value;}
+    // Roles
+    for(const k of PLAYER_ROLES){if(k in _playerData&&getEl(k))out[k]=getEl(k).checked;}
+    // Flags & stats: iterate every remaining bool/number field
+    const shown=new Set(['name','gems','banned','ban_reason',...PLAYER_ACCOUNT_STR,...PLAYER_ROLES]);
+    for(const k of Object.keys(_playerData)){
+      if(shown.has(k)||k.startsWith('Role.'))continue;
+      const t=_valType(_playerData[k]);
+      if(t==='boolean'||t==='number')setTyped(k);
+    }
+    // Advanced JSON textareas
+    for(const k of Object.keys(_playerData)){
+      const t=_valType(_playerData[k]);
+      if(t!=='array'&&t!=='object')continue;
+      const el=getEl(k); if(!el)continue;
+      let parsed;
+      try{parsed=JSON.parse(el.value);}catch(e){throw new Error('Invalid JSON in "'+k+'": '+e.message);}
+      out[k]=parsed;
+    }
+  }catch(e){return toast(e.message,'err');}
+
+  try{
+    await api('/api/player/update',{method:'POST',body:JSON.stringify({file,action:'raw',value:out})});
+    toast('Saved · '+Object.keys(out).length+' keys','ok');
+    openPlayer(file); // re-fetch + re-render
   }catch(e){toast(e.message,'err');}
 }
 
