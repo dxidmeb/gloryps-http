@@ -23,6 +23,7 @@ const rateLimit = require("express-rate-limit");
 const dgram = require("dgram");
 const net = require("net");
 const { spawn } = require("child_process");
+const itemsCodec = require("./items_codec");
 
 const SESSION_SECRET = crypto.randomBytes(32); // random each startup
 const COOKIE_NAME = "gp_admin";
@@ -188,7 +189,7 @@ module.exports = function createAdmin(CONFIG_FILE, getConfig) {
         message: { error: "Too many login attempts. Try again later." }
     });
 
-    router.use(express.json({ limit: "20mb" }));
+    router.use(express.json({ limit: "64mb" }));
 
     // --- login page (inline, dark) ---
     const LOGIN_HTML = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -244,8 +245,10 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
     // everything below requires auth (+ CSRF on mutations)
     router.use(requireAuth);
     router.use(requireCsrf);
+    // Never let browsers cache admin pages/APIs (prevents "stale page" bugs)
+    router.use((req, res, next) => { res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate"); res.set("Pragma", "no-cache"); res.set("Expires", "0"); next(); });
 
-    router.get("/", (req, res) => res.sendFile(path.join(__dirname, "html", "admin.html")));
+    router.get("/", (req, res) => { try { res.type("html").send(fs.readFileSync(path.join(__dirname, "html", "admin.html"))); } catch (e) { res.status(500).end(); } });
 
     // CSRF token endpoint (page fetches this after load)
     router.get("/api/csrf", (req, res) => res.json({ token: makeCsrf(req.adminUser) }));
@@ -280,6 +283,17 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
                 .filter(f => f.endsWith(".json") || f.endsWith(".txt") || f.endsWith(".xaml")).length;
         } catch (e) { return 0; }
     }
+    // Cheap item count: read just the dat header (version@0 uint16, item_count@2 uint32).
+    // No full decode — safe to call on every dashboard load.
+    function headerItemCount() {
+        try {
+            const full = safePath("database/items.dat");
+            if (!full || !fs.existsSync(full)) return 0;
+            const buf = fs.readFileSync(full);
+            if (buf.length < 6) return 0;
+            return (buf[2] | (buf[3] << 8) | (buf[4] << 16) | (buf[5] << 24)) >>> 0;
+        } catch (e) { return 0; }
+    }
 
     // ---- API: dashboard info + live server status ----
     router.get("/api/info", async (req, res) => {
@@ -293,7 +307,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
         try { [gameUp, httpUp] = await Promise.all([probeUDP("127.0.0.1", udp), probeTCP("127.0.0.1", tcp)]); } catch (e) {}
         res.json({
             user: req.adminUser, server_path: root, database_subdirs: subdirs,
-            counts: { players: count("database/players"), worlds: count("database/worlds"), json: count("database/json"), text: count("database/text") },
+            counts: { players: count("database/players"), worlds: count("database/worlds"), json: count("database/json"), text: count("database/text"), items: headerItemCount() },
             status: {
                 game_udp: { host, port: udp, up: gameUp, pid: (gameChild && !gameChild.killed) ? gameChild.pid : null,
                     uptime: gameStartedAt ? Math.floor((Date.now() - gameStartedAt) / 1000) : 0 },
@@ -632,6 +646,89 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
                 data: preview
             });
         } catch (e) { res.status(500).json({ error: "Parse error: " + e.message }); }
+    });
+
+    // =========================================================
+    //  ITEMS.DAT EDITOR
+    //  items.dat is edited directly by the panel here. A separate
+    //  watchdog (Release/start.sh) watches database/items.json and only
+    //  re-encodes when items.json changes — so the two never fight:
+    //  panel -> items.dat directly; watchdog -> items.json -> items.dat.
+    // =========================================================
+    function itemsPath() { return safePath("database/items.dat"); }
+    function itemsJsonPath() { return safePath("database/items.json"); }
+
+    // items.dat page
+    router.get("/items", (req, res) => { try { res.type("html").send(fs.readFileSync(path.join(__dirname, "html", "admin_items.html"))); } catch (e) { res.status(500).end(); } });
+
+    // decode items.dat -> JSON
+    router.get("/api/items", (req, res) => {
+        const full = itemsPath();
+        if (!full) return res.status(400).json({ error: "Invalid path" });
+        if (!fs.existsSync(full)) return res.json({ items: [], version: 0, item_count: 0 });
+        try {
+            const buf = fs.readFileSync(full);
+            const decoded = itemsCodec.decodeItems(buf);
+            res.json(decoded);
+        } catch (e) {
+            if (e.code === "UNSUPPORTED_VERSION") return res.status(400).json({ error: e.message });
+            res.status(500).json({ error: "Decode failed: " + e.message });
+        }
+    });
+
+    // save JSON -> items.dat (backup first, atomic)
+    // NOTE: body is sent as text/plain so the global bodyParser.json() (100kb
+    // default, defined in main.js which we must not edit) skips it; we parse it
+    // here with a 64mb text parser since items.json is ~22MB.
+    const bigText = express.text({ limit: "64mb", type: () => true });
+    router.post("/api/items/save", bigText, (req, res) => {
+        let body;
+        try { body = JSON.parse(req.body || "{}"); } catch (e) { return res.status(400).json({ error: "Invalid JSON body" }); }
+        const items = body.items;
+        const version = Number(body.version);
+        if (!Array.isArray(items)) return res.status(400).json({ error: "Missing items array" });
+        if (!Number.isFinite(version) || version < 1 || version > 26) return res.status(400).json({ error: "Invalid version" });
+        const full = itemsPath();
+        if (!full) return res.status(400).json({ error: "Invalid path" });
+        let encoded;
+        try {
+            encoded = itemsCodec.encodeItems({ version, item_count: items.length, items });
+        } catch (e) {
+            return res.status(400).json({ error: "Encode failed: " + e.message });
+        }
+        try {
+            backupFile(full);
+            atomicWrite(full, encoded);
+            audit(req.adminUser, "ITEMS_SAVE", `items=${items.length} version=${version} bytes=${encoded.length}`);
+            console.log(`\x1b[33m[ADMIN PANEL] ${req.adminUser} saved items.dat (${items.length} items)\x1b[0m`);
+            res.json({ success: true, item_count: items.length, bytes: encoded.length });
+        } catch (e) { res.status(500).json({ error: e.message }); }
+    });
+
+    // upload a raw .dat (base64) -> items.dat (backup first, atomic)
+    // Also sent as text/plain (base64 body ~7.5MB) to bypass the 100kb global json parser.
+    router.post("/api/items/upload", bigText, (req, res) => {
+        let parsed;
+        try { parsed = JSON.parse(req.body || "{}"); } catch (e) { return res.status(400).json({ error: "Invalid JSON body" }); }
+        const b64 = parsed.content;
+        if (typeof b64 !== "string" || !b64.length) return res.status(400).json({ error: "Missing content" });
+        let bytes;
+        try { bytes = Buffer.from(b64, "base64"); } catch (e) { return res.status(400).json({ error: "Invalid base64" }); }
+        if (bytes.length < 6) return res.status(400).json({ error: "File too small" });
+        const ver = bytes[0] + (bytes[1] << 8);
+        if (ver < 1 || ver > 26) return res.status(400).json({ error: "Implausible version byte: " + ver });
+        // sanity: decodes cleanly
+        try { itemsCodec.decodeItems(bytes); }
+        catch (e) { return res.status(400).json({ error: "Not a valid items.dat: " + e.message }); }
+        const full = itemsPath();
+        if (!full) return res.status(400).json({ error: "Invalid path" });
+        try {
+            backupFile(full);
+            atomicWrite(full, bytes);
+            audit(req.adminUser, "ITEMS_UPLOAD", `bytes=${bytes.length} version=${ver}`);
+            console.log(`\x1b[33m[ADMIN PANEL] ${req.adminUser} uploaded items.dat (${bytes.length} bytes)\x1b[0m`);
+            res.json({ success: true, bytes: bytes.length, version: ver });
+        } catch (e) { res.status(500).json({ error: e.message }); }
     });
 
     return router;

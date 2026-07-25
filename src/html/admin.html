@@ -160,6 +160,7 @@ details.adv textarea{width:100%}
       <a data-view="control" onclick="nav('control')"><span class="ic">⚙</span> Server Control</a>
       <a data-view="players" onclick="nav('players')"><span class="ic">◉</span> Players</a>
       <a data-view="worlds" onclick="nav('worlds')"><span class="ic">◈</span> Worlds</a>
+      <a href="/admin/items"><span class="ic">▦</span> Items</a>
       <a data-view="json" onclick="nav('json')"><span class="ic">{}</span> JSON Files</a>
       <a data-view="text" onclick="nav('text')"><span class="ic">≡</span> Text Files</a>
       <a data-view="roles" onclick="nav('roles')"><span class="ic">✦</span> Roles</a>
@@ -245,6 +246,7 @@ async function renderDashboard(m){
       <div class="card"><div class="n">${info.counts.worlds}</div><div class="l">Worlds</div></div>
       <div class="card"><div class="n">${info.counts.json}</div><div class="l">JSON files</div></div>
       <div class="card"><div class="n">${info.counts.text}</div><div class="l">Text files</div></div>
+      <div class="card"><div class="n">${info.counts.items||0}</div><div class="l">Items</div></div>
     </div>
     <div class="statusrow">
       <div class="pill"><span class="dot ${g.up?'up':'down'}"></span> Game server <small>UDP ${g.port} · ${g.up?'online':'offline'}${g.uptime?' · '+fmtDur(g.uptime):''}</small></div>
@@ -254,6 +256,7 @@ async function renderDashboard(m){
       <button class="btn ok" onclick="ctrl('game:start')">Start Game</button>
       <button class="btn danger" onclick="ctrl('game:stop')">Stop Game</button>
       <button class="btn" onclick="ctrl('game:restart')">Restart Game</button>
+      <a class="btn" href="/admin/items" style="text-decoration:none">Edit Items</a>
     </div>
     <div class="section"><div class="spread"><h3>Recent Activity</h3><button class="btn ghost sm" onclick="render('dashboard')">Refresh</button></div>
       <div class="logbox" id="auditbox">Loading…</div></div>`;
