@@ -14,6 +14,8 @@
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;overflow-x:hidden}
 a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #4a6a8a;outline-offset:1px}
 .app{display:flex;min-height:100vh}
 
 /* Sidebar */
@@ -26,7 +28,8 @@ nav{flex:1;padding:10px 0;overflow:auto}
 nav a{display:flex;align-items:center;gap:10px;padding:12px 20px;color:var(--muted);text-decoration:none;font-size:13px;border-left:3px solid transparent;cursor:pointer;min-height:44px}
 nav a:hover{color:var(--text);background:#161616}
 nav a.active{color:var(--text);background:#181d22;border-left-color:var(--accent)}
-nav a .ic{width:16px;text-align:center;opacity:.85}
+nav a .ic{width:8px;height:8px;flex-shrink:0;border:1px solid var(--muted);border-radius:2px;display:inline-block}
+nav a:hover .ic,nav a.active .ic{border-color:var(--accent);background:#1c242c}
 .sideft{padding:14px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
 .sideft .who{margin-bottom:8px;word-break:break-all}
 .sideft button{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:9px 12px;cursor:pointer;font-size:12px;width:100%;min-height:40px}
@@ -34,7 +37,8 @@ nav a .ic{width:16px;text-align:center;opacity:.85}
 
 /* Topbar (mobile) */
 .topbar{display:none;position:sticky;top:0;z-index:40;background:var(--panel3);border-bottom:1px solid var(--border);padding:10px 14px;align-items:center;gap:12px}
-.topbar .burger{background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;width:42px;height:42px;font-size:18px;cursor:pointer}
+.topbar .burger{background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;width:42px;height:42px;cursor:pointer;position:relative;flex-shrink:0}
+.topbar .burger::before{content:"";position:absolute;left:11px;right:11px;top:14px;height:2px;background:var(--text);box-shadow:0 6px 0 var(--text),0 12px 0 var(--text)}
 .topbar h1{font-size:14px;margin:0;font-weight:600}
 .backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45}
 
@@ -156,16 +160,16 @@ details.adv textarea{width:100%}
       <button class="closebtn" onclick="closeNav()">&times;</button>
     </div>
     <nav id="nav">
-      <a data-view="dashboard" class="active" onclick="nav('dashboard')"><span class="ic">▣</span> Dashboard</a>
-      <a data-view="control" onclick="nav('control')"><span class="ic">⚙</span> Server Control</a>
-      <a data-view="players" onclick="nav('players')"><span class="ic">◉</span> Players</a>
-      <a data-view="worlds" onclick="nav('worlds')"><span class="ic">◈</span> Worlds</a>
-      <a href="/admin/items"><span class="ic">▦</span> Items</a>
-      <a href="/admin/shop"><span class="ic">◧</span> Gem Shop</a>
-      <a data-view="json" onclick="nav('json')"><span class="ic">{}</span> JSON Files</a>
-      <a data-view="text" onclick="nav('text')"><span class="ic">≡</span> Text Files</a>
-      <a href="/admin/roles"><span class="ic">✦</span> Roles</a>
-      <a data-view="backups" onclick="nav('backups')"><span class="ic">⟲</span> Backups</a>
+      <a data-view="dashboard" class="active" onclick="nav('dashboard')"><span class="ic"></span> Dashboard</a>
+      <a data-view="control" onclick="nav('control')"><span class="ic"></span> Server Control</a>
+      <a data-view="players" onclick="nav('players')"><span class="ic"></span> Players</a>
+      <a data-view="worlds" onclick="nav('worlds')"><span class="ic"></span> Worlds</a>
+      <a href="/admin/items"><span class="ic"></span> Items</a>
+      <a href="/admin/shop"><span class="ic"></span> Gem Shop</a>
+      <a data-view="json" onclick="nav('json')"><span class="ic"></span> JSON Files</a>
+      <a data-view="text" onclick="nav('text')"><span class="ic"></span> Text Files</a>
+      <a href="/admin/roles"><span class="ic"></span> Roles</a>
+      <a data-view="backups" onclick="nav('backups')"><span class="ic"></span> Backups</a>
     </nav>
     <div class="sideft">
       <div class="who">Signed in as <b id="whoami">…</b></div>
@@ -175,7 +179,7 @@ details.adv textarea{width:100%}
 
   <div style="flex:1;min-width:0;display:flex;flex-direction:column">
     <div class="topbar">
-      <button class="burger" onclick="openNav()">☰</button>
+      <button class="burger" onclick="openNav()" aria-label="Open navigation"></button>
       <h1 id="topTitle">Dashboard</h1>
     </div>
     <main id="main"></main>

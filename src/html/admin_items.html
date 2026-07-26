@@ -14,6 +14,7 @@
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;overflow-x:hidden}
 a{color:inherit}
+:focus-visible{outline:2px solid #4a6a8a;outline-offset:2px}
 .app{display:flex;min-height:100vh}
 aside{width:300px;background:var(--panel3);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh}
 .brand{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -69,8 +70,8 @@ p.sub{color:var(--muted);font-size:12px;margin:0 0 16px}
 .loadpanel{text-align:center;padding:80px 20px}
 .loadpanel .sub{margin-bottom:20px}
 #toast{position:fixed;bottom:20px;right:20px;z-index:100;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
-.toast.ok{border-color:var(--ok)}.toast.err{border-color:var(--err)}
+.toast{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 16px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:340px}
+.toast.ok{border-left-color:var(--ok)}.toast.err{border-left-color:var(--err)}
 .progress{max-width:520px;margin:60px auto}
 .progress .bar{height:14px;background:#0d0d0d;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .progress .fill{height:100%;width:0;background:linear-gradient(90deg,#2e3d4d,#3a4a5a);transition:width .15s}
@@ -133,6 +134,7 @@ input[type=file]{display:none}
           <button class="btn" onclick="openAdd()">Add New Item</button>
           <button class="btn" onclick="document.getElementById('uploadInput').click()">Upload .dat</button>
           <input type="file" id="uploadInput" accept=".dat" onchange="doUpload(event)">
+          <span class="cnt" id="lastSaved" style="align-self:center"></span>
         </div>
         <div id="editor"><div class="empty">Select an item from the list, or add a new one.</div></div>
       </div>
@@ -517,6 +519,7 @@ async function saveAll(){
     if(r.status===401){location.href='/admin/login';return;}
     if(r.status<200||r.status>=300)throw new Error((j&&j.error)||('HTTP '+r.status));
     toast('Saved items.dat ('+DATA.items.length+' items)','ok');
+    {const ls=document.getElementById('lastSaved');if(ls)ls.textContent='Last saved '+new Date().toLocaleTimeString();}
   }catch(e){toast('Save failed: '+e.message,'err');}
   finally{SAVING=false;btn.disabled=false;btn.textContent=orig;}
 }
