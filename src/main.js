@@ -352,20 +352,23 @@ function downloadFromCDN(relativePath, localDest, callback) {
 }
 
 app.use("/cache", (req, res, next) => {
-    const safePath = path.normalize(req.path).replace(/^(\.\.[\/\\])+/, '');
+    const safePath = path.normalize(req.path).replace(/^(\.\.[\/\\])+/, '').replace(/^\/+/, '');
     const filePath = path.join(CACHE_DIR, safePath);
     fs.stat(filePath, (err, stat) => {
         if (err || !stat.isFile()) {
+            console.log(`${CLR.RED}[MISSING] /${safePath}${CLR.RESET}`);
             downloadFromCDN(req.path, filePath, (success) => {
-                if (success) return res.sendFile(filePath);
-                if (serverConfig.spoof_missing_files) return res.status(200).send("");
+                if (success) { console.log(`${CLR.GREEN}[SENT-CDN] /${safePath}${CLR.RESET}`); return res.sendFile(filePath); }
+                if (serverConfig.spoof_missing_files) { console.log(`${CLR.YELLOW}[SPOOFED] /${safePath}${CLR.RESET}`); return res.status(200).send(""); }
                 return res.status(404).send("File not found.");
             });
             return; 
         }
+        console.log(`${CLR.GREEN}[SENT] /${safePath}${CLR.RESET}`);
         next();
     });
 });
+
 
 app.use("/cache", express.static(CACHE_DIR));
 
