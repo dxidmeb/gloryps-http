@@ -1,28 +1,28 @@
 {
-    "ip": "64.227.116.75",
-    "port_tcp": 443,
-    "port_udp": 55000,
-    "url_login": "growtopia-login-url-ten.vercel.app",
-    "meta": "Glory",
-    "gemini_key": "",
-    "spoof_missing_files": true,
-    "admin_ips": [
-        {
-            "ip": "127.0.0.1",
-            "name": "Admin"
-        },
-        {
-            "ip": "178.135.20.156",
-            "name": "👑 Creator"
-        },
-        {
-            "ip": "178.135.14.143",
-            "name": "twinni-creepy"
-        }
-    ],
-    "admin": {
-        "user": "gloryadmin",
-        "server_path": "/root/90824/Core/x64/Release",
-        "pass_hash": "scrypt:ff20ea357d7052159d005ed5a25a9040:de0c478cfb7e61985e3f4099ee1b05d3e02caf78750dd287ceb742938996b9308da947d8acfddaa9680f122d4d21db7a986e8c6cedf7e60249dfb229a9cebad4"
+  "ip": "64.227.116.75",
+  "port_tcp": 443,
+  "port_udp": 55000,
+  "url_login": "growtopia-login-url-ten.vercel.app",
+  "meta": "Glory",
+  "gemini_key": "",
+  "spoof_missing_files": true,
+  "admin_ips": [
+    {
+      "ip": "127.0.0.1",
+      "name": "Admin"
+    },
+    {
+      "ip": "178.135.20.156",
+      "name": "👑 Creator"
+    },
+    {
+      "ip": "178.135.14.143",
+      "name": "twinni-creepy"
     }
+  ],
+  "admin": {
+    "user": "gloryadmin",
+    "server_path": "/root/90824/Core/x64/Release",
+    "pass_hash": "scrypt:ff20ea357d7052159d005ed5a25a9040:de0c478cfb7e61985e3f4099ee1b05d3e02caf78750dd287ceb742938996b9308da947d8acfddaa9680f122d4d21db7a986e8c6cedf7e60249dfb229a9cebad4"
+  }
 }

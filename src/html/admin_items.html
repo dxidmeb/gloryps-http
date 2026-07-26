@@ -162,6 +162,22 @@ input[type=file]{display:none}
         <div class="filefield"><input id="a_extra_file" placeholder="path/to/extra.rttex"><button class="btn sm ghost" onclick="hashInto('a_extra_file','a_extra_file_hash')">Compute hash</button></div></div>
       <div class="field"><label>Extra file hash</label><input id="a_extra_file_hash" type="number" value="0"></div>
     </div>
+    <div class="collapse-hd" onclick="toggleAdvAdd()"><span>Advanced fields</span><span id="advArrow">+</span></div>
+    <div id="advAddWrap" style="display:none">
+      <div class="formgrid">
+        <div class="field"><label>Hit sound type</label><input id="a_hit_sound_type" type="number" value="0"></div>
+        <div class="field"><label>Clothing type</label><input id="a_clothing_type" type="number" value="0"></div>
+        <div class="field"><label>Collision type</label><input id="a_collision_type" type="number" value="0"></div>
+        <div class="field"><label>Spread type</label><input id="a_spread_type" type="number" value="0"></div>
+        <div class="field"><label>Break hits</label><input id="a_break_hits" value="0"></div>
+        <div class="field"><label>Drop chance</label><input id="a_drop_chance" type="number" value="0"></div>
+        <div class="field"><label>Grow time</label><input id="a_grow_time" type="number" value="0"></div>
+        <div class="field"><label>val1</label><input id="a_val1" type="number" value="0"></div>
+        <div class="field"><label>val2</label><input id="a_val2" type="number" value="0"></div>
+        <div class="field full"><label>Extra options</label><input id="a_extra_options" value=""></div>
+      </div>
+      <p class="sub" style="margin-top:8px">All remaining fields can be edited after creation via the item edit form.</p>
+    </div>
     <div class="btnrow" style="margin-top:16px">
       <button class="btn ok" onclick="doAdd()">Create Item + Seed</button>
       <button class="btn ghost" onclick="closeAdd()">Cancel</button>
@@ -344,9 +360,14 @@ function openAdd(){
   document.getElementById('a_texture_x').value=0;
   document.getElementById('a_texture_y').value=0;
   document.getElementById('a_extra_file_hash').value=0;
+  ['a_hit_sound_type','a_clothing_type','a_collision_type','a_spread_type','a_drop_chance','a_grow_time','a_val1','a_val2'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=0;});
+  ['a_break_hits'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='0';});
+  {const e=document.getElementById('a_extra_options');if(e)e.value='';}
+  document.getElementById('advAddWrap').style.display='none';document.getElementById('advArrow').textContent='+';
   document.getElementById('addModal').classList.add('show');
 }
 function closeAdd(){document.getElementById('addModal').classList.remove('show');}
+function toggleAdvAdd(){const w=document.getElementById('advAddWrap');const on=w.style.display==='none';w.style.display=on?'block':'none';document.getElementById('advArrow').textContent=on?'-':'+';}
 function gv(id){return document.getElementById(id).value;}
 function gn(id){return Number(document.getElementById(id).value)||0;}
 function doAdd(){
@@ -371,6 +392,14 @@ function doAdd(){
   base.texture_y=gn('a_texture_y');
   base.extra_file=gv('a_extra_file');
   base.extra_file_hash=gn('a_extra_file_hash')>>>0;
+  // advanced (fields only present if element exists)
+  const setAdv=(id,fld,num)=>{const e=document.getElementById(id);if(e)base[fld]=num?(Number(e.value)||0):e.value;};
+  setAdv('a_hit_sound_type','hit_sound_type',1);setAdv('a_clothing_type','clothing_type',1);
+  setAdv('a_collision_type','collision_type',1);setAdv('a_spread_type','spread_type',1);
+  setAdv('a_drop_chance','drop_chance',1);setAdv('a_grow_time','grow_time',1);
+  setAdv('a_val1','val1',1);setAdv('a_val2','val2',1);
+  {const e=document.getElementById('a_break_hits');if(e)base.break_hits=e.value;}
+  setAdv('a_extra_options','extra_options',0);
   DATA.items.push(base);
   // paired seed (odd id): clone base visuals, action_type 19, name "<Name> Seed"
   const seed=blankTemplate(baseId+1,name+" Seed");
