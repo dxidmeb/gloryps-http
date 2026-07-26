@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>GloryPs Admin — Items Editor</title>
+<title>GloryPs Admin - Items Editor</title>
 <style>
 :root{
   --bg:#0d0d0d; --panel:#141414; --panel2:#191919; --panel3:#111; --border:#262626;
@@ -26,7 +26,9 @@ aside{width:300px;background:var(--panel3);border-right:1px solid var(--border);
 .itemrow:hover{background:#161616}
 .itemrow.sel{background:#181d22;border-left:3px solid var(--accent)}
 .itemrow .id{color:var(--muted);font-size:12px;min-width:52px;font-family:ui-monospace,monospace}
-.itemrow .nm{font-size:13px;word-break:break-word}
+.itemrow .nm{font-size:13px;word-break:break-word;flex:1}
+.itemrow .del{color:var(--muted);border:1px solid var(--border);background:transparent;border-radius:6px;width:30px;height:30px;font-size:16px;cursor:pointer;flex-shrink:0;line-height:1}
+.itemrow .del:hover{border-color:var(--err);color:#c98}
 .sideft{padding:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
 .mainwrap{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{display:flex;position:sticky;top:0;z-index:40;background:var(--panel3);border-bottom:1px solid var(--border);padding:10px 14px;align-items:center;gap:12px}
@@ -38,6 +40,7 @@ aside{width:300px;background:var(--panel3);border-right:1px solid var(--border);
 .backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45}
 main{flex:1;min-width:0;overflow-x:hidden;padding:20px 24px}
 h2{font-size:18px;font-weight:600;margin:0 0 4px}
+h3{font-size:14px;font-weight:600;margin:0 0 12px;color:var(--text)}
 p.sub{color:var(--muted);font-size:12px;margin:0 0 16px}
 .btn{background:var(--accent2);border:1px solid var(--accent);color:#dfe6ec;padding:9px 16px;border-radius:7px;font-size:13px;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .btn:hover{background:#354657}
@@ -46,6 +49,7 @@ p.sub{color:var(--muted);font-size:12px;margin:0 0 16px}
 .btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}.btn.ghost:hover{color:var(--text);border-color:var(--accent)}
 .btn.sm{padding:6px 12px;font-size:12px;min-height:34px}
 .btn.big{padding:14px 28px;font-size:15px;min-height:48px}
+.btn:disabled{opacity:.5;cursor:default}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:10px}
 .tab{padding:8px 14px;border-radius:7px 7px 0 0;background:transparent;border:1px solid transparent;color:var(--muted);cursor:pointer;font-size:13px;min-height:38px}
@@ -56,9 +60,11 @@ p.sub{color:var(--muted);font-size:12px;margin:0 0 16px}
 .field input:focus,.field select:focus{border-color:var(--accent)}
 .field .hint{font-size:10px;color:#666;margin-top:3px}
 .field.full{grid-column:1/-1}
-.filefield{display:flex;gap:6px}
-.filefield input{flex:1}
+.filefield{display:flex;gap:6px;flex-wrap:wrap}
+.filefield input{flex:1;min-width:120px}
 .section{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.collapse-hd{cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:13px;padding:6px 0}
+.collapse-hd:hover{color:var(--text)}
 .empty{color:var(--muted);text-align:center;padding:60px 20px}
 .loadpanel{text-align:center;padding:80px 20px}
 .loadpanel .sub{margin-bottom:20px}
@@ -70,6 +76,9 @@ p.sub{color:var(--muted);font-size:12px;margin:0 0 16px}
 .progress .fill{height:100%;width:0;background:linear-gradient(90deg,#2e3d4d,#3a4a5a);transition:width .15s}
 .progress .ptxt{margin-top:10px;font-size:13px;color:var(--muted);text-align:center}
 input[type=file]{display:none}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}
+.modal.show{display:flex}
+.modal .box{background:var(--panel);border:1px solid var(--border);border-radius:12px;max-width:640px;width:100%;padding:20px 22px;margin:auto}
 @media(max-width:768px){
   aside{position:fixed;left:0;top:0;z-index:50;transform:translateX(-100%);transition:transform .2s;width:85%;max-width:340px}
   aside.open{transform:translateX(0)}
@@ -92,8 +101,8 @@ input[type=file]{display:none}
     <div class="listhead" id="listCnt">Not loaded</div>
     <div class="itemlist" id="itemlist"></div>
     <div class="sideft">
-      <button class="btn sm ok" onclick="addBlank()">+ Blank Item</button>
-      <button class="btn sm" onclick="cloneCurrent()">Clone Selected</button>
+      <button class="btn sm ok" onclick="openAdd()" id="addBtn" disabled>Add New Item</button>
+      <button class="btn sm" onclick="cloneCurrent()" id="cloneBtn" disabled>Clone Selected</button>
       <a class="btn sm ghost" href="/admin" style="text-decoration:none">&larr; Back to Admin</a>
     </div>
   </aside>
@@ -102,7 +111,7 @@ input[type=file]{display:none}
     <div class="topbar">
       <button class="burger" onclick="openNav()">&#9776;</button>
       <h1>Items</h1>
-      <div class="search"><input id="search" placeholder="Search id or name…" oninput="onSearch()" disabled></div>
+      <div class="search"><input id="search" placeholder="Search id or name" oninput="onSearch()" disabled></div>
       <div class="cnt" id="topCnt"></div>
     </div>
     <main id="main">
@@ -115,21 +124,51 @@ input[type=file]{display:none}
 
       <div id="progress" class="progress" style="display:none">
         <div class="bar"><div class="fill" id="progFill"></div></div>
-        <div class="ptxt" id="progTxt">Loading…</div>
+        <div class="ptxt" id="progTxt">Loading...</div>
       </div>
 
       <div id="editorarea" style="display:none">
         <div class="btnrow">
           <button class="btn ok" onclick="saveAll()">Save items.dat</button>
+          <button class="btn" onclick="openAdd()">Add New Item</button>
           <button class="btn" onclick="document.getElementById('uploadInput').click()">Upload .dat</button>
-          <button class="btn ghost" onclick="bulkClear()">Bulk Clear Files/Hashes</button>
           <input type="file" id="uploadInput" accept=".dat" onchange="doUpload(event)">
         </div>
-        <div id="editor"><div class="empty">Loading items…</div></div>
+        <div id="editor"><div class="empty">Select an item from the list, or add a new one.</div></div>
       </div>
     </main>
   </div>
 </div>
+
+<!-- Add Item modal -->
+<div class="modal" id="addModal">
+  <div class="box">
+    <h2>Add New Item</h2>
+    <p class="sub">A paired Seed item is created automatically (odd id) so item/seed pairing stays intact.</p>
+    <div class="formgrid">
+      <div class="field full"><label>Name</label><input id="a_name" placeholder="Item name"></div>
+      <div class="field"><label>Category (item_category)</label><input id="a_item_category" type="number" value="0"></div>
+      <div class="field"><label>Editable type</label><input id="a_editable_type" type="number" value="0"></div>
+      <div class="field"><label>Item kind</label><input id="a_item_kind" type="number" value="0"></div>
+      <div class="field"><label>Rarity</label><input id="a_rarity" type="number" value="0"></div>
+      <div class="field"><label>Max amount</label><input id="a_max_amount" type="number" value="200"></div>
+      <div class="field"><label>Action type</label><input id="a_action_type" type="number" value="0"></div>
+      <div class="field full"><label>Texture</label>
+        <div class="filefield"><input id="a_texture" placeholder="tiles_pageX.rttex"><button class="btn sm ghost" onclick="hashInto('a_texture','a_texture_hash')">Compute hash</button></div></div>
+      <div class="field"><label>Texture hash</label><input id="a_texture_hash" type="number" value="0"></div>
+      <div class="field"><label>Texture X</label><input id="a_texture_x" type="number" value="0"></div>
+      <div class="field"><label>Texture Y</label><input id="a_texture_y" type="number" value="0"></div>
+      <div class="field full"><label>Extra file</label>
+        <div class="filefield"><input id="a_extra_file" placeholder="path/to/extra.rttex"><button class="btn sm ghost" onclick="hashInto('a_extra_file','a_extra_file_hash')">Compute hash</button></div></div>
+      <div class="field"><label>Extra file hash</label><input id="a_extra_file_hash" type="number" value="0"></div>
+    </div>
+    <div class="btnrow" style="margin-top:16px">
+      <button class="btn ok" onclick="doAdd()">Create Item + Seed</button>
+      <button class="btn ghost" onclick="closeAdd()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -143,6 +182,19 @@ function toast(msg,type){const t=document.createElement('div');t.className='toas
 function openNav(){document.getElementById('side').classList.add('open');document.getElementById('backdrop').classList.add('show');}
 function closeNav(){document.getElementById('side').classList.remove('open');document.getElementById('backdrop').classList.remove('show');}
 
+// ProtonHash of a path string (matches converter): from PATH bytes.
+function protonHash(str){
+  let h=0x55555555;
+  for(let i=0;i<str.length;i++){const b=str.charCodeAt(i)&255;h=(h>>>27)+(h<<5)+b;h=h>>>0;}
+  return h|0;
+}
+function hashInto(pathId,hashId){
+  const p=document.getElementById(pathId).value;
+  const v=protonHash(p)>>>0;
+  document.getElementById(hashId).value=v;
+  toast('Hash: '+v,'ok');
+}
+
 async function api(pathname,opts={}){
   opts.headers=opts.headers||{};
   if(opts.body){opts.headers['Content-Type']=opts.textBody?'text/plain':'application/json';}
@@ -154,7 +206,7 @@ async function api(pathname,opts={}){
   return j;
 }
 
-// ---- field schema ----
+// ---- field schema (edit form) ----
 const NUM='num', STR='str', HEX='hex', COLOR='color';
 const CATS={
   General:[
@@ -163,22 +215,22 @@ const CATS={
     ['clothing_type',NUM],['val1',NUM],['val2',NUM],['drop_chance',NUM],['grow_time',NUM]
   ],
   Visuals:[
-    ['texture',STR,'file'],['texture_hash',NUM,'hash'],['texture_x',NUM],['texture_y',NUM],
+    ['texture',STR,'file'],['texture_hash',NUM],['texture_x',NUM],['texture_y',NUM],
     ['texture2',STR],['spread_type',NUM],['is_stripey_wallpaper',NUM],['collision_type',NUM],
     ['break_hits',STR],['is_rayman',NUM]
   ],
-  'Audio&Physics':[
-    ['hit_sound_type',NUM],['audio_volume',NUM],
-    ['extra_file',STR,'file'],['extra_file_hash',NUM,'hash']
+  'ExtraFile':[
+    ['extra_file',STR,'file'],['extra_file_hash',NUM],
+    ['hit_sound_type',NUM],['audio_volume',NUM]
   ],
   'Pets&Custom':[
-    ['pet_name',STR,'file'],['pet_prefix',STR,'file'],['pet_suffix',STR,'file'],['pet_ability',STR],
+    ['pet_name',STR],['pet_prefix',STR],['pet_suffix',STR],['pet_ability',STR],
     ['seed_base',NUM],['seed_overlay',NUM],['tree_base',NUM],['tree_leaves',NUM],
     ['seed_color',COLOR],['seed_overlay_color',COLOR],
     ['extra_options',STR],['extra_options2',STR]
   ],
   'Version Specific':[
-    ['punch_options',STR,'file'],['data_version_12',HEX],['int_version_13',NUM],['int_version_14',NUM],
+    ['punch_options',STR],['data_version_12',HEX],['int_version_13',NUM],['int_version_14',NUM],
     ['data_version_15',HEX],['str_version_15',STR],['str_version_16',STR],['int_version_17',NUM],
     ['int_version_18',NUM],['data_version_19',HEX],['int_version_21',NUM],['str_version_22',STR],
     ['int_version_23',NUM],['byte_version_24',NUM],['str_version_25',STR],['int_version_26',NUM],
@@ -186,21 +238,20 @@ const CATS={
   ]
 };
 const HASH_LINK={texture:'texture_hash',extra_file:'extra_file_hash'};
-
 function allKnown(){const s=new Set();for(const k in CATS)CATS[k].forEach(f=>s.add(f[0]));return s;}
 
 // ---- list ----
 function onSearch(){renderList();}
 function renderList(){
   const q=document.getElementById('search').value.trim().toLowerCase();
-  filtered=DATA.items.map((it,i)=>({it,i})).filter(({it,i})=>{
+  filtered=DATA.items.map((it,i)=>({it,i})).filter(({it})=>{
     if(!q)return true;
     return String(it.item_id).includes(q)||String(it.name||'').toLowerCase().includes(q);
   });
   const show=filtered.slice(0,MAXSHOW);
   const el=document.getElementById('itemlist');
   el.innerHTML=show.map(({it,i})=>
-    `<div class="itemrow ${i===selIdx?'sel':''}" onclick="selectItem(${i})"><span class="id">#${it.item_id}</span><span class="nm">${esc(it.name)}</span></div>`
+    `<div class="itemrow ${i===selIdx?'sel':''}" onclick="selectItem(${i})"><span class="id">#${it.item_id}</span><span class="nm">${esc(it.name)}</span><button class="del" title="Soft-remove" onclick="event.stopPropagation();softRemove(${i})">&times;</button></div>`
   ).join('')||'<div class="empty">No matches</div>';
   const cntTxt=filtered.length>MAXSHOW?`showing ${MAXSHOW} of ${filtered.length} (${DATA.item_count} total)`:`${filtered.length} of ${DATA.item_count} items`;
   document.getElementById('listCnt').textContent=cntTxt;
@@ -216,11 +267,10 @@ function renderEditor(){
   const it=DATA.items[selIdx];
   const tabs=Object.keys(CATS).concat('Advanced');
   if(!tabs.includes(curTab))curTab='General';
-  let html=`<div class="section"><h2>#${it.item_id} — ${esc(it.name)}</h2>
+  let html=`<div class="section"><h2>#${it.item_id} - ${esc(it.name)}</h2>
     <p class="sub">Editing item index ${selIdx}</p>
     <div class="btnrow">
-      <button class="btn sm danger" onclick="removeItem()">Remove</button>
-      <button class="btn sm ghost" onclick="blankItem()">Blank Out</button>
+      <button class="btn sm danger" onclick="softRemove(${selIdx})">Soft-Remove</button>
     </div>
     <div class="tabs">${tabs.map(t=>`<div class="tab ${t===curTab?'active':''}" onclick="setTab('${t}')">${t}</div>`).join('')}</div>
     <div class="formgrid">`;
@@ -242,26 +292,29 @@ function fieldHtml(it,key,type,sub){
   if(type===COLOR){
     const c=(v&&typeof v==='object')?v:{a:0,r:0,g:0,b:0};
     inner=`<div class="filefield">${['a','r','g','b'].map(ch=>`<input type="number" min="0" max="255" value="${c[ch]||0}" oninput="setColor('${key}','${ch}',this.value)" placeholder="${ch.toUpperCase()}">`).join('')}</div>`;
-  } else if(sub==='file'||type===HEX){
+  } else if(sub==='file'){
+    const hk=HASH_LINK[key];
     inner=`<div class="filefield"><input id="${id}" value="${esc(v)}" oninput="setField('${key}',this.value)">
-      ${HASH_LINK[key]?`<button class="btn sm ghost" onclick="clearFileHash('${key}')">Clear</button>`:''}</div>`;
+      ${hk?`<button class="btn sm ghost" onclick="computeFieldHash('${key}','${hk}')">Compute hash</button><button class="btn sm ghost" onclick="clearFileHash('${key}')">Clear</button>`:''}</div>`;
+  } else if(type===HEX){
+    inner=`<input id="${id}" value="${esc(v)}" oninput="setField('${key}',this.value)">`;
   } else if(type===NUM){
     inner=`<input id="${id}" type="number" value="${v==null?0:v}" oninput="setField('${key}',this.value,1)">`;
   } else {
     inner=`<input id="${id}" value="${esc(v)}" oninput="setField('${key}',this.value)">`;
   }
-  const hint=HASH_LINK[key]?`<div class="hint">hash: ${key==='texture'?'texture_hash':'extra_file_hash'}</div>`:'';
+  const hint=HASH_LINK[key]?`<div class="hint">paired hash: ${HASH_LINK[key]}</div>`:'';
   return `<div class="field ${type===COLOR||type===HEX?'full':''}"><label>${key}</label>${inner}${hint}</div>`;
 }
 
 function setField(key,val,isNum){const it=DATA.items[selIdx];if(!it)return;it[key]=isNum?Number(val):val;if(key==='name'){renderList();}}
 function setColor(key,ch,val){const it=DATA.items[selIdx];if(!it)return;if(!it[key]||typeof it[key]!=='object')it[key]={a:0,r:0,g:0,b:0};it[key][ch]=Number(val);}
 function clearFileHash(key){const it=DATA.items[selIdx];if(!it)return;it[key]='';if(HASH_LINK[key])it[HASH_LINK[key]]=0;renderEditor();toast('Cleared '+key,'ok');}
+function computeFieldHash(key,hashKey){const it=DATA.items[selIdx];if(!it)return;it[hashKey]=protonHash(String(it[key]||''))>>>0;renderEditor();toast('Computed '+hashKey+' = '+it[hashKey],'ok');}
 
-// ---- item ops ----
-function nextId(){let m=-1;for(const it of DATA.items)if(it.item_id>m)m=it.item_id;return m+1;}
-function blankTemplate(id){return {
-  item_id:id,editable_type:0,item_category:0,action_type:0,hit_sound_type:0,name:"Blank",
+// ---- templates ----
+function blankTemplate(id,name){return {
+  item_id:id,editable_type:0,item_category:0,action_type:0,hit_sound_type:0,name:name||("null_item"+id),
   texture:"",texture_hash:0,item_kind:0,val1:0,texture_x:0,texture_y:0,spread_type:0,
   is_stripey_wallpaper:0,collision_type:0,break_hits:0,drop_chance:0,clothing_type:0,rarity:0,
   max_amount:0,extra_file:"",extra_file_hash:0,audio_volume:0,pet_name:"",pet_prefix:"",pet_suffix:"",
@@ -273,22 +326,99 @@ function blankTemplate(id){return {
   data_version_19:"0".repeat(18),int_version_21:0,str_version_22:"",int_version_23:0,byte_version_24:0,
   str_version_25:"",int_version_26:0,byte_version_26:0
 };}
-function addBlank(){const id=nextId();DATA.items.push(blankTemplate(id));DATA.item_count=DATA.items.length;selIdx=DATA.items.length-1;document.getElementById('search').value='';renderList();renderEditor();toast('Added blank item #'+id,'ok');}
-function cloneCurrent(){if(selIdx<0){toast('Select an item to clone','err');return;}const src=DATA.items[selIdx];const copy=JSON.parse(JSON.stringify(src));copy.item_id=nextId();copy.name=(src.name||'Item')+' (copy)';DATA.items.push(copy);DATA.item_count=DATA.items.length;selIdx=DATA.items.length-1;renderList();renderEditor();toast('Cloned to #'+copy.item_id,'ok');}
-function removeItem(){if(selIdx<0)return;if(!confirm('Remove item #'+DATA.items[selIdx].item_id+'? This changes indices/count.'))return;DATA.items.splice(selIdx,1);DATA.item_count=DATA.items.length;selIdx=Math.min(selIdx,DATA.items.length-1);renderList();renderEditor();toast('Removed','ok');}
-function blankItem(){if(selIdx<0)return;if(!confirm('Blank out item #'+DATA.items[selIdx].item_id+'? Keeps id, zeroes fields, name="Blank".'))return;const id=DATA.items[selIdx].item_id;DATA.items[selIdx]=blankTemplate(id);renderList();renderEditor();toast('Blanked','ok');}
-function bulkClear(){if(!confirm('Clear all file paths + hashes across ALL '+DATA.items.length+' items?'))return;let n=0;for(const it of DATA.items){for(const k of Object.keys(HASH_LINK)){if(it[k]){it[k]='';n++;}}it[HASH_LINK[k]]=0;}renderEditor();toast('Cleared files/hashes on '+n+' fields','ok');}
+
+// ids equal index here; keep them sequential.
+function nextId(){return DATA.items.length;}
+
+// ---- add ----
+function openAdd(){
+  if(!loaded){toast('Load items first','err');return;}
+  ['a_name','a_texture','a_extra_file'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('a_item_category').value=0;
+  document.getElementById('a_editable_type').value=0;
+  document.getElementById('a_item_kind').value=0;
+  document.getElementById('a_rarity').value=0;
+  document.getElementById('a_max_amount').value=200;
+  document.getElementById('a_action_type').value=0;
+  document.getElementById('a_texture_hash').value=0;
+  document.getElementById('a_texture_x').value=0;
+  document.getElementById('a_texture_y').value=0;
+  document.getElementById('a_extra_file_hash').value=0;
+  document.getElementById('addModal').classList.add('show');
+}
+function closeAdd(){document.getElementById('addModal').classList.remove('show');}
+function gv(id){return document.getElementById(id).value;}
+function gn(id){return Number(document.getElementById(id).value)||0;}
+function doAdd(){
+  const name=gv('a_name').trim();
+  if(!name){toast('Name required','err');return;}
+  // Ensure base id is even so seed lands on odd id (item/seed pairing).
+  if(nextId()%2!==0){
+    const pad=nextId();
+    DATA.items.push(blankTemplate(pad,"null_item"+pad));
+  }
+  const baseId=nextId();
+  const base=blankTemplate(baseId,name);
+  base.item_category=gn('a_item_category');
+  base.editable_type=gn('a_editable_type');
+  base.item_kind=gn('a_item_kind');
+  base.rarity=gn('a_rarity');
+  base.max_amount=gn('a_max_amount');
+  base.action_type=gn('a_action_type');
+  base.texture=gv('a_texture');
+  base.texture_hash=gn('a_texture_hash')>>>0;
+  base.texture_x=gn('a_texture_x');
+  base.texture_y=gn('a_texture_y');
+  base.extra_file=gv('a_extra_file');
+  base.extra_file_hash=gn('a_extra_file_hash')>>>0;
+  DATA.items.push(base);
+  // paired seed (odd id): clone base visuals, action_type 19, name "<Name> Seed"
+  const seed=blankTemplate(baseId+1,name+" Seed");
+  seed.item_category=5;
+  seed.action_type=19;
+  seed.rarity=base.rarity;
+  seed.max_amount=200;
+  seed.texture=base.texture;
+  seed.texture_hash=base.texture_hash;
+  seed.seed_base=2;seed.seed_overlay=4;seed.tree_base=2;seed.tree_leaves=4;
+  seed.grow_time=60;
+  seed.seed_color={a:255,r:174,g:118,b:58};
+  seed.seed_overlay_color={a:255,r:174,g:118,b:58};
+  DATA.items.push(seed);
+  DATA.item_count=DATA.items.length;
+  closeAdd();
+  document.getElementById('search').value='';
+  selIdx=DATA.items.indexOf(base);
+  renderList();renderEditor();
+  toast('Added #'+baseId+' + Seed #'+(baseId+1),'ok');
+}
+
+function cloneCurrent(){
+  if(selIdx<0){toast('Select an item to clone','err');return;}
+  const src=DATA.items[selIdx];const copy=JSON.parse(JSON.stringify(src));
+  copy.item_id=nextId();copy.name=(src.name||'Item')+' (copy)';
+  DATA.items.push(copy);DATA.item_count=DATA.items.length;selIdx=DATA.items.length-1;
+  renderList();renderEditor();toast('Cloned to #'+copy.item_id,'ok');
+}
+
+// soft-remove: replace with null_item placeholder, keep id stable
+function softRemove(i){
+  const it=DATA.items[i];if(!it)return;
+  if(!confirm('Soft-remove item #'+it.item_id+' ("'+(it.name||'')+'")?\nId is preserved; item becomes a null_item placeholder so references do not break.'))return;
+  DATA.items[i]=blankTemplate(it.item_id,"null_item"+it.item_id);
+  renderList();
+  if(selIdx===i)renderEditor();
+  toast('Soft-removed #'+it.item_id,'ok');
+}
 
 // ---- load with real progress ----
 function setProgress(pct,rec,tot){
   document.getElementById('progFill').style.width=pct+'%';
   const mb=x=>(x/1048576).toFixed(1)+' MB';
-  document.getElementById('progTxt').textContent = tot ? `Loading… ${pct}%  (${mb(rec)} / ${mb(tot)})` : `Loading… ${mb(rec)}`;
+  document.getElementById('progTxt').textContent = tot ? `Loading ${pct}%  (${mb(rec)} / ${mb(tot)})` : `Loading ${mb(rec)}`;
 }
 async function loadItems(){
-  try{
-    const c=await api('/api/csrf');CSRF=c.token;
-  }catch(e){}
+  try{const c=await api('/api/csrf');CSRF=c.token;}catch(e){}
   document.getElementById('loadpanel').style.display='none';
   document.getElementById('editorarea').style.display='none';
   document.getElementById('progress').style.display='block';
@@ -298,7 +428,6 @@ async function loadItems(){
     if(r.status===401){location.href='/admin/login';return;}
     if(!r.ok)throw new Error('HTTP '+r.status);
     const total=+r.headers.get('Content-Length')||0;
-    // Try real streaming progress; fall back to plain json if unsupported.
     if(r.body && typeof r.body.getReader==='function'){
       const reader=r.body.getReader();
       const chunks=[];let received=0;
@@ -308,7 +437,7 @@ async function loadItems(){
         chunks.push(value);received+=value.length;
         setProgress(total?Math.floor(received/total*100):0,received,total);
       }
-      document.getElementById('progTxt').textContent='Decoding items…';
+      document.getElementById('progTxt').textContent='Decoding items...';
       const buf=new Uint8Array(received);let pos=0;
       for(const c of chunks){buf.set(c,pos);pos+=c.length;}
       const text=new TextDecoder('utf-8').decode(buf);
@@ -321,15 +450,16 @@ async function loadItems(){
     document.getElementById('verLbl').textContent='items.dat v'+DATA.version;
     loaded=true;
     document.getElementById('search').disabled=false;
+    document.getElementById('addBtn').disabled=false;
+    document.getElementById('cloneBtn').disabled=false;
     document.getElementById('progress').style.display='none';
     document.getElementById('editorarea').style.display='block';
-    selIdx=DATA.items.length?0:-1;
+    selIdx=-1;
     renderList();renderEditor();
     toast('Loaded '+DATA.items.length+' items','ok');
   }catch(e){
     document.getElementById('progress').style.display='none';
     document.getElementById('loadpanel').style.display='block';
-    document.getElementById('editor').innerHTML='<div class="empty">Failed to load: '+esc(e.message)+'</div>';
     toast(e.message,'err');
   }
 }
@@ -342,26 +472,27 @@ async function saveAll(){
   SAVING=true;btn.disabled=true;const orig=btn.textContent;
   try{
     const body=JSON.stringify({version:DATA.version,items:DATA.items});
-    btn.textContent='Saving… 0%';
-    // XHR gives real upload progress (fetch can't)
+    btn.textContent='Saving 0%';
     const r=await new Promise((resolve,reject)=>{
       const x=new XMLHttpRequest();
       x.open('POST','/admin/api/items/save');
       x.setRequestHeader('Content-Type','text/plain');
       x.setRequestHeader('X-CSRF-Token',CSRF);
-      x.upload.onprogress=e=>{if(e.lengthComputable)btn.textContent='Saving… '+Math.floor(e.loaded/e.total*100)+'%';};
+      x.upload.onprogress=e=>{if(e.lengthComputable)btn.textContent='Saving '+Math.floor(e.loaded/e.total*100)+'%';};
       x.onload=()=>resolve(x);
       x.onerror=()=>reject(new Error('network error'));
       x.timeout=300000;x.ontimeout=()=>reject(new Error('timed out'));
       x.send(body);
     });
-    let j={};try{j=JSON.parse(r.responseText);}catch(e){}
+    let j={};try{j=JSON.parse(x_resp(r));}catch(e){}
     if(r.status===401){location.href='/admin/login';return;}
-    if(r.status<200||r.status>=300)throw new Error(j.error||('HTTP '+r.status));
+    if(r.status<200||r.status>=300)throw new Error((j&&j.error)||('HTTP '+r.status));
     toast('Saved items.dat ('+DATA.items.length+' items)','ok');
   }catch(e){toast('Save failed: '+e.message,'err');}
   finally{SAVING=false;btn.disabled=false;btn.textContent=orig;}
 }
+function x_resp(x){return x.responseText;}
+
 async function doUpload(ev){
   const file=ev.target.files[0];if(!file)return;
   const buf=await file.arrayBuffer();
@@ -370,7 +501,7 @@ async function doUpload(ev){
   const b64=btoa(bin);
   try{
     const r=await api('/api/items/upload',{method:'POST',textBody:true,body:JSON.stringify({content:b64})});
-    toast('Uploaded ('+r.bytes+' bytes, v'+r.version+'). Reloading…','ok');
+    toast('Uploaded ('+r.bytes+' bytes, v'+r.version+'). Reloading...','ok');
     setTimeout(loadItems,700);
   }catch(e){toast('Upload failed: '+e.message,'err');}
   ev.target.value='';

@@ -102,6 +102,29 @@ function audit(user, action, detail) {
     } catch (e) {}
 }
 
+// ---------- hardened audit log (per-request, IP-aware, rotated) ----------
+const AUDIT2_FILE = path.resolve(__dirname, "../logs/admin_audit.log");
+try { fs.mkdirSync(path.dirname(AUDIT2_FILE), { recursive: true }); } catch (e) {}
+function rotateAudit() {
+    try {
+        const st = fs.statSync(AUDIT2_FILE);
+        if (st.size > 5 * 1024 * 1024) fs.renameSync(AUDIT2_FILE, AUDIT2_FILE + ".1"); // keep one backup
+    } catch (e) {}
+}
+function audit2(ip, user, action, target) {
+    try {
+        rotateAudit();
+        const line = `[${new Date().toISOString()}] ip=${ip || "-"} user=${user || "-"} action=${action} target=${String(target || "-").slice(0, 300)}\n`;
+        fs.appendFileSync(AUDIT2_FILE, line);
+    } catch (e) {}
+}
+function clientIp(req) {
+    let ip = (req.headers["cf-connecting-ip"] || (req.socket && req.socket.remoteAddress) || req.ip || "").split(",")[0].trim();
+    return ip.replace(/^::ffff:/, "");
+}
+// generic error message — never leak internals/paths/stacks to clients
+const GENERIC_ERR = { error: "Internal server error" };
+
 module.exports = function createAdmin(CONFIG_FILE, getConfig) {
     const router = express.Router();
 
@@ -189,6 +212,91 @@ module.exports = function createAdmin(CONFIG_FILE, getConfig) {
         message: { error: "Too many login attempts. Try again later." }
     });
 
+    // --- brute-force lockout: 5 failed logins per IP within 15 min => 429 for 15 min ---
+    const LOCKOUT_MAX = 5, LOCKOUT_WINDOW_MS = 15 * 60 * 1000, LOCKOUT_BLOCK_MS = 15 * 60 * 1000;
+    const failedLogins = new Map(); // ip -> { fails: [ts...], blockedUntil }
+    function lockoutCheck(req, res, next) {
+        const ip = clientIp(req);
+        const rec = failedLogins.get(ip);
+        if (rec && rec.blockedUntil && Date.now() < rec.blockedUntil) {
+            audit2(ip, "-", "LOGIN_BLOCKED", "brute-force lockout active");
+            return res.status(429).json({ error: "Too many failed attempts. Try again later." });
+        }
+        next();
+    }
+    function recordLoginFail(ip) {
+        const now = Date.now();
+        const rec = failedLogins.get(ip) || { fails: [], blockedUntil: 0 };
+        rec.fails = rec.fails.filter(t => now - t < LOCKOUT_WINDOW_MS);
+        rec.fails.push(now);
+        if (rec.fails.length >= LOCKOUT_MAX) {
+            rec.blockedUntil = now + LOCKOUT_BLOCK_MS;
+            rec.fails = [];
+            console.log(`\x1b[31m[ADMIN PANEL] IP ${ip} locked out for 15 min (brute force)\x1b[0m`);
+            audit2(ip, "-", "LOGIN_LOCKOUT", "5 failures in window");
+        }
+        failedLogins.set(ip, rec);
+    }
+    setInterval(() => { // GC stale entries
+        const now = Date.now();
+        for (const [ip, rec] of failedLogins) {
+            if ((!rec.blockedUntil || now > rec.blockedUntil) && !rec.fails.some(t => now - t < LOCKOUT_WINDOW_MS)) failedLogins.delete(ip);
+        }
+    }, 5 * 60 * 1000).unref();
+
+    // --- rate limiting for authenticated admin API: 60/min mutations, 120/min reads, per IP ---
+    const rlBuckets = new Map(); // key -> { count, resetAt }
+    function apiRateLimit(req, res, next) {
+        if (!req.path.startsWith("/api/")) return next();
+        const isMutation = ["POST", "PUT", "DELETE"].includes(req.method);
+        const limit = isMutation ? 60 : 120;
+        const key = clientIp(req) + (isMutation ? ":m" : ":r");
+        const now = Date.now();
+        let b = rlBuckets.get(key);
+        if (!b || now > b.resetAt) { b = { count: 0, resetAt: now + 60 * 1000 }; rlBuckets.set(key, b); }
+        b.count++;
+        if (b.count > limit) return res.status(429).json({ error: "Rate limit exceeded. Slow down." });
+        if (rlBuckets.size > 5000) { for (const [k, v] of rlBuckets) { if (now > v.resetAt) rlBuckets.delete(k); } }
+        next();
+    }
+
+    // --- session idle timeout (30 min): stateless cookies, so track last activity per token sig ---
+    const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+    const lastActivity = new Map(); // token signature -> ts
+    function sessionSig(cookieHeader) {
+        if (!cookieHeader) return null;
+        const m = cookieHeader.split(/;\s*/).find(c => c.startsWith(COOKIE_NAME + "="));
+        if (!m) return null;
+        const token = decodeURIComponent(m.slice(COOKIE_NAME.length + 1));
+        return token.slice(token.lastIndexOf(".") + 1) || null;
+    }
+    function idleTimeout(req, res, next) {
+        const sig = sessionSig(req.headers.cookie);
+        if (!sig) return next();
+        const now = Date.now();
+        const last = lastActivity.get(sig);
+        if (last && now - last > IDLE_TIMEOUT_MS) {
+            lastActivity.delete(sig);
+            res.setHeader("Set-Cookie", `${COOKIE_NAME}=; HttpOnly;${SECURE_ATTR} SameSite=Strict; Path=/admin; Max-Age=0`);
+            if (req.path.startsWith("/api/")) return res.status(401).json({ error: "Session expired. Log in again." });
+            return res.redirect("/admin/login");
+        }
+        lastActivity.set(sig, now);
+        if (lastActivity.size > 10000) { for (const [k, v] of lastActivity) { if (now - v > IDLE_TIMEOUT_MS) lastActivity.delete(k); } }
+        next();
+    }
+
+    // --- security headers for all admin responses ---
+    function securityHeaders(req, res, next) {
+        res.set("X-Content-Type-Options", "nosniff");
+        res.set("X-Frame-Options", "DENY");
+        res.set("Referrer-Policy", "no-referrer");
+        res.set("Content-Security-Policy",
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+        next();
+    }
+    router.use(securityHeaders);
+
     router.use(express.json({ limit: "64mb" }));
 
     // --- login page (inline, dark) ---
@@ -220,18 +328,22 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
         res.type("html").send(LOGIN_HTML);
     });
 
-    router.post("/api/login", loginLimiter, (req, res) => {
+    router.post("/api/login", lockoutCheck, loginLimiter, (req, res) => {
         const { user, pass } = req.body || {};
         const cfg = adminCfg();
+        const ip = clientIp(req);
         const userOk = typeof user === "string" && user === cfg.user;
         const passOk = typeof pass === "string" && verifyPassword(pass, cfg.pass_hash);
         if (!userOk || !passOk) {
-            console.log(`\x1b[31m[ADMIN PANEL] Failed login attempt (user='${String(user).slice(0,32)}')\x1b[0m`);
+            console.log(`\x1b[31m[ADMIN PANEL] Failed login attempt (user='${String(user).slice(0,32)}', ip=${ip})\x1b[0m`);
+            recordLoginFail(ip);
+            audit2(ip, String(user).slice(0, 32), "LOGIN_FAIL", "invalid credentials");
             return res.status(401).json({ error: "Invalid credentials" });
         }
         const token = makeSession(user);
         res.setHeader("Set-Cookie", `${COOKIE_NAME}=${encodeURIComponent(token)}; HttpOnly;${SECURE_ATTR} SameSite=Strict; Path=/admin; Max-Age=${SESSION_TTL_MS / 1000}`);
         audit(user, "LOGIN", "success");
+        audit2(ip, user, "LOGIN", "success");
         res.json({ success: true });
     });
 
@@ -244,7 +356,21 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
 
     // everything below requires auth (+ CSRF on mutations)
     router.use(requireAuth);
+    router.use(idleTimeout);
+    router.use(apiRateLimit);
     router.use(requireCsrf);
+    // Audit every authenticated admin mutation (route + brief target)
+    router.use((req, res, next) => {
+        if (["POST", "PUT", "DELETE"].includes(req.method)) {
+            let target = "";
+            try {
+                const b = req.body || {};
+                target = String(b.path || b.file || b.action || b.dir || req.query.path || req.query.file || "").slice(0, 120);
+            } catch (e) {}
+            audit2(clientIp(req), req.adminUser, req.method + " " + req.path, target);
+        }
+        next();
+    });
     // Never let browsers cache admin pages/APIs (prevents "stale page" bugs)
     router.use((req, res, next) => { res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate"); res.set("Pragma", "no-cache"); res.set("Expires", "0"); next(); });
 
@@ -323,7 +449,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
             const n = Math.min(Number(req.query.n) || 200, 500);
             const lines = fs.readFileSync(AUDIT_FILE, "utf8").trim().split("\n").reverse().slice(0, n);
             res.json({ lines });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     // =========================================================
@@ -410,7 +536,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
                 })
                 .sort((a, b) => b.mtime - a.mtime);
             res.json({ files });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     router.get("/api/file", (req, res) => {
@@ -441,7 +567,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
             audit(req.adminUser, "SAVE", rel);
             console.log(`\x1b[33m[ADMIN PANEL] ${req.adminUser} saved ${rel}\x1b[0m`);
             res.json({ success: true });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     // create new file (inside allowed dir, must not already exist)
@@ -458,7 +584,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
             atomicWrite(full, content != null ? content : (rel.endsWith(".json") ? "{}" : ""));
             audit(req.adminUser, "CREATE", rel);
             res.json({ success: true, path: rel });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     // delete file (with backup retained)
@@ -472,7 +598,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
             fs.unlinkSync(full);
             audit(req.adminUser, "DELETE", rel);
             res.json({ success: true });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     // =========================================================
@@ -494,7 +620,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
                 }).sort((a, b) => b.mtime - a.mtime);
             } catch (e) {}
             res.json({ path: rel, backups: backs });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     router.post("/api/restore", (req, res) => {
@@ -518,7 +644,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
             audit(req.adminUser, "RESTORE", rel + " <- " + backup);
             console.log(`\x1b[33m[ADMIN PANEL] ${req.adminUser} restored ${rel} from ${backup}\x1b[0m`);
             res.json({ success: true });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     // =========================================================
@@ -559,7 +685,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
                 return { file: f, name, gems, role, banned, keys };
             });
             res.json({ players });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     router.get("/api/player", (req, res) => {
@@ -602,7 +728,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
             audit(req.adminUser, "PLAYER_" + String(action).toUpperCase(), file + (action === "setgems" ? " =" + value : ""));
             console.log(`\x1b[33m[ADMIN PANEL] ${req.adminUser} player ${action}: ${file}\x1b[0m`);
             res.json({ success: true, summary: { name: data.name || file, gems: data.gems || 0, role: deriveRole(data), banned: isBanned(data) } });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     // =========================================================
@@ -625,7 +751,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
                 return { file: f, name, owner: owner || "-", blocks, width, height };
             });
             res.json({ worlds });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     router.get("/api/world", (req, res) => {
@@ -687,6 +813,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
         const items = body.items;
         const version = Number(body.version);
         if (!Array.isArray(items)) return res.status(400).json({ error: "Missing items array" });
+        if (items.length > 100000) return res.status(400).json({ error: "Too many items (max 100000)" });
         if (!Number.isFinite(version) || version < 1 || version > 26) return res.status(400).json({ error: "Invalid version" });
         const full = itemsPath();
         if (!full) return res.status(400).json({ error: "Invalid path" });
@@ -702,7 +829,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
             audit(req.adminUser, "ITEMS_SAVE", `items=${items.length} version=${version} bytes=${encoded.length}`);
             console.log(`\x1b[33m[ADMIN PANEL] ${req.adminUser} saved items.dat (${items.length} items)\x1b[0m`);
             res.json({ success: true, item_count: items.length, bytes: encoded.length });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     // upload a raw .dat (base64) -> items.dat (backup first, atomic)
@@ -728,7 +855,213 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
             audit(req.adminUser, "ITEMS_UPLOAD", `bytes=${bytes.length} version=${ver}`);
             console.log(`\x1b[33m[ADMIN PANEL] ${req.adminUser} uploaded items.dat (${bytes.length} bytes)\x1b[0m`);
             res.json({ success: true, bytes: bytes.length, version: ver });
-        } catch (e) { res.status(500).json({ error: e.message }); }
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    // =========================================================
+    //  GEM SHOP EDITOR
+    //  Each store button's purchase contents live in a JSON file:
+    //  database/shop/-<name>.json  =>  {"itemai":[[id,qty],...],"g":price,"p":"Display"}
+    //  (or "v" for voucher price instead of "g"). The game server reads
+    //  these at purchase time — editing them needs NO C++ rebuild.
+    //  Button VISIBILITY in the store UI is separate (shop_tab() in
+    //  WorldInfo.h, requires rebuild); the UI shows a copyable snippet.
+    // =========================================================
+    function shopDir() { return safePath("database/shop"); }
+    // strict name validation: letters, digits, underscore, dash (not leading), dot not allowed
+    function validShopName(n) {
+        return typeof n === "string" && /^[A-Za-z0-9_][A-Za-z0-9_\-]{0,63}$/.test(n);
+    }
+    function shopFile(name) {
+        if (!validShopName(name)) return null;
+        const dir = shopDir();
+        if (!dir) return null;
+        const full = path.resolve(dir, "-" + name + ".json");
+        if (!full.startsWith(dir + path.sep)) return null;
+        return full;
+    }
+    function validateShopEntry(body) {
+        const p = String(body.p || "").slice(0, 128);
+        if (!p) return { error: "Missing display name (p)" };
+        const itemai = body.itemai;
+        if (!Array.isArray(itemai) || itemai.length < 1 || itemai.length > 50) return { error: "itemai must be an array of 1-50 [item_id, qty] pairs" };
+        const clean = [];
+        for (const pair of itemai) {
+            if (!Array.isArray(pair) || pair.length !== 2) return { error: "Each itemai entry must be [item_id, qty]" };
+            const id = Number(pair[0]), qty = Number(pair[1]);
+            if (!Number.isInteger(id) || id < 0 || id > 100000) return { error: "Invalid item id: " + pair[0] };
+            if (!Number.isInteger(qty) || qty < 1 || qty > 10000) return { error: "Invalid quantity: " + pair[1] };
+            clean.push([id, qty]);
+        }
+        const out = { itemai: clean, p };
+        const g = body.g, v = body.v;
+        if (g != null && g !== "") {
+            const n = Number(g);
+            if (!Number.isInteger(n) || n < 0 || n > 100000000) return { error: "Invalid gem price" };
+            out.g = n;
+        } else if (v != null && v !== "") {
+            const n = Number(v);
+            if (!Number.isInteger(n) || n < 0 || n > 100000000) return { error: "Invalid voucher price" };
+            out.v = n;
+        } else return { error: "Provide a gem price (g) or voucher price (v)" };
+        return { entry: out };
+    }
+
+    // shop editor page
+    router.get("/shop", (req, res) => { try { res.type("html").send(fs.readFileSync(path.join(__dirname, "html", "admin_shop.html"))); } catch (e) { res.status(500).end(); } });
+
+    // list all shop entries
+    router.get("/api/shop", (req, res) => {
+        const dir = shopDir();
+        if (!dir || !fs.existsSync(dir)) return res.json({ entries: [] });
+        const entries = [];
+        try {
+            for (const f of fs.readdirSync(dir)) {
+                if (!f.startsWith("-") || !f.endsWith(".json")) continue;
+                const name = f.slice(1, -5);
+                try {
+                    const data = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
+                    entries.push({ name, p: data.p || "", g: data.g != null ? data.g : null, v: data.v != null ? data.v : null, itemai: Array.isArray(data.itemai) ? data.itemai : [] });
+                } catch (e) {
+                    entries.push({ name, p: "(parse error)", g: null, v: null, itemai: [], error: true });
+                }
+            }
+            entries.sort((a, b) => a.name.localeCompare(b.name));
+            res.json({ entries });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    // create or update a shop entry
+    router.post("/api/shop/save", (req, res) => {
+        const body = req.body || {};
+        const name = body.name;
+        if (!validShopName(name)) return res.status(400).json({ error: "Invalid button name (letters, digits, _ and - only)" });
+        const full = shopFile(name);
+        if (!full) return res.status(400).json({ error: "Invalid path" });
+        const r = validateShopEntry(body);
+        if (r.error) return res.status(400).json({ error: r.error });
+        const isNew = !fs.existsSync(full);
+        if (isNew && body.expectExisting) return res.status(404).json({ error: "Entry no longer exists" });
+        try {
+            // rename case: oldName given and differs
+            if (body.oldName && body.oldName !== name) {
+                if (!validShopName(body.oldName)) return res.status(400).json({ error: "Invalid old name" });
+                const oldFull = shopFile(body.oldName);
+                if (oldFull && fs.existsSync(oldFull)) {
+                    if (fs.existsSync(full)) return res.status(409).json({ error: "Target name already exists" });
+                    backupFile(oldFull);
+                    fs.unlinkSync(oldFull);
+                }
+            } else if (isNew && !body.overwrite && body.mode === "create") {
+                // creating a new entry when file exists is handled below
+            }
+            if (!isNew && body.mode === "create") return res.status(409).json({ error: "Entry already exists" });
+            backupFile(full);
+            atomicWrite(full, JSON.stringify(r.entry));
+            audit(req.adminUser, "SHOP_SAVE", "-" + name + ".json " + JSON.stringify(r.entry).slice(0, 200));
+            res.json({ success: true, name, entry: r.entry });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    // delete a shop entry
+    router.post("/api/shop/delete", (req, res) => {
+        const name = (req.body || {}).name;
+        const full = shopFile(name);
+        if (!full) return res.status(400).json({ error: "Invalid name" });
+        if (!fs.existsSync(full)) return res.status(404).json({ error: "Not found" });
+        try {
+            backupFile(full);
+            fs.unlinkSync(full);
+            audit(req.adminUser, "SHOP_DELETE", "-" + name + ".json");
+            res.json({ success: true });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    /* ================================================================
+     *  ROLES EDITOR
+     *  - database/json/config.json      -> BUY_SHOP_CONFIG.shop_roles (tier names)
+     *  - database/json/command_roles.json -> { "/cmd": requiredRole 0..9 }
+     * ================================================================ */
+    function rolesCfgPath() { return safePath("database/json/config.json"); }
+    function cmdRolesPath() { return safePath("database/json/command_roles.json"); }
+    function readJsonFile(full) { return JSON.parse(fs.readFileSync(full, "utf8")); }
+
+    router.get("/roles", (req, res) => { try { res.type("html").send(fs.readFileSync(path.join(__dirname, "html", "admin_roles.html"))); } catch (e) { res.status(500).end(); } });
+
+    router.get("/api/roles", (req, res) => {
+        try {
+            const cfg = readJsonFile(rolesCfgPath());
+            const tiers = ((cfg.BUY_SHOP_CONFIG || {}).shop_roles || []).map((r, i) => ({
+                index: i, role_name: String(r.role_name || ""), price_coins: r.price_coins
+            }));
+            const commands = readJsonFile(cmdRolesPath());
+            res.json({ tiers, commands });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    // update tier display names (only role_name; rest of config.json untouched)
+    router.post("/api/roles/tiers", (req, res) => {
+        const tiers = (req.body || {}).tiers;
+        if (!Array.isArray(tiers)) return res.status(400).json({ error: "tiers must be an array" });
+        const full = rolesCfgPath();
+        try {
+            const cfg = readJsonFile(full);
+            const arr = (cfg.BUY_SHOP_CONFIG || {}).shop_roles;
+            if (!Array.isArray(arr)) return res.status(500).json({ error: "shop_roles missing in config.json" });
+            if (tiers.length !== arr.length) return res.status(400).json({ error: "tiers length mismatch (expected " + arr.length + ")" });
+            for (const t of tiers) {
+                if (!t || typeof t.role_name !== "string" || !t.role_name.trim() || t.role_name.length > 64)
+                    return res.status(400).json({ error: "Each tier needs a non-empty role_name (max 64 chars)" });
+            }
+            tiers.forEach((t, i) => { arr[i].role_name = t.role_name; });
+            const out = JSON.stringify(cfg, null, 4);
+            JSON.parse(out); // sanity
+            backupFile(full);
+            atomicWrite(full, out);
+            audit(req.adminUser, "ROLES_TIERS_SAVE", tiers.map(t => t.role_name).join(", ").slice(0, 200));
+            res.json({ success: true });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    function validCmdName(c) { return typeof c === "string" && /^\/[A-Za-z0-9_?!.-]{1,40}$/.test(c); }
+
+    // add or update a command's required role
+    router.post("/api/roles/command", (req, res) => {
+        const { command, role } = req.body || {};
+        if (!validCmdName(command)) return res.status(400).json({ error: "Invalid command name (must start with / )" });
+        const n = Number(role);
+        if (!Number.isInteger(n) || n < 0 || n > 9) return res.status(400).json({ error: "Role must be an integer 0-9" });
+        const full = cmdRolesPath();
+        try {
+            const map = readJsonFile(full);
+            if (typeof map !== "object" || Array.isArray(map)) return res.status(500).json({ error: "command_roles.json malformed" });
+            const isNew = !(command in map);
+            map[command] = n;
+            const out = JSON.stringify(map, null, 4);
+            JSON.parse(out);
+            backupFile(full);
+            atomicWrite(full, out);
+            audit(req.adminUser, isNew ? "ROLES_CMD_ADD" : "ROLES_CMD_SET", command + " = " + n);
+            res.json({ success: true, command, role: n, created: isNew });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    // remove a command entry
+    router.delete("/api/roles/command", (req, res) => {
+        const command = String(req.query.cmd || "");
+        if (!validCmdName(command)) return res.status(400).json({ error: "Invalid command name" });
+        const full = cmdRolesPath();
+        try {
+            const map = readJsonFile(full);
+            if (!(command in map)) return res.status(404).json({ error: "Command not found" });
+            delete map[command];
+            const out = JSON.stringify(map, null, 4);
+            JSON.parse(out);
+            backupFile(full);
+            atomicWrite(full, out);
+            audit(req.adminUser, "ROLES_CMD_DELETE", command);
+            res.json({ success: true });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
     return router;
