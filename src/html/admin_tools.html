@@ -127,6 +127,27 @@ input[type=file]{display:none}
       <div class="result" id="p2rHash"></div>
       <canvas id="p2rCanvas" class="preview"></canvas>
     </div>
+
+    <!-- Items.dat Converter -->
+    <div class="section">
+      <h3>Items.dat Converter</h3>
+      <p class="sub">Convert Growtopia items.dat between binary, JSON and text formats, fully in your browser. DAT and JSON round-trip losslessly (all fields). TXT keeps core fields only (id, name, category, rarity, max_amount, texture, texture_hash, extra_file, extra_file_hash); other fields default to 0/empty on TXT import. Large files (~20k items) may take a few seconds.</p>
+      <div class="btnrow">
+        <button class="btn" onclick="idcPick('dat2json')">DAT to JSON</button>
+        <button class="btn" onclick="idcPick('dat2txt')">DAT to TXT</button>
+        <button class="btn" onclick="idcPick('json2dat')">JSON to DAT</button>
+        <button class="btn" onclick="idcPick('txt2dat')">TXT to DAT</button>
+        <input type="file" id="idcFile">
+      </div>
+      <div class="btnrow">
+        <button class="btn ok" id="idcDl" disabled onclick="idcDownload()">Download result</button>
+      </div>
+      <div class="result" id="idcInfo"></div>
+      <div class="field" style="margin-top:10px">
+        <label>Preview (first 200 lines)</label>
+        <textarea id="idcPreview" readonly style="width:100%;min-height:160px;background:#0d0d0d;border:1px solid #2c2c2c;border-radius:7px;color:var(--text);padding:10px 12px;font-family:ui-monospace,monospace;font-size:12px;resize:vertical"></textarea>
+      </div>
+    </div>
   </main>
 </div>
 <div id="toast"></div>
@@ -352,6 +373,315 @@ function pngToRttex(img){
 function p2rDownload(){
   if(!p2rBytes)return toast('Nothing converted yet','err');
   saveBlob(p2rBytes,p2rName+'.rttex');
+}
+
+/* Browser port of items_codec.js (v26). No Node APIs. */
+var IDC_KEY="PBG892FXX982ABC*";
+var IDC_HEXTBL=(function(){var t=[];for(var n=0;n<=255;n++)t.push(n.toString(16).padStart(2,'0'));return t;})();
+function idcHex(u8,start,end){
+  var out=[];
+  for(var i=start;i<end;i++)out.push(IDC_HEXTBL[u8[i]]);
+  return out.join('').toUpperCase();
+}
+function idcReadNum(b,pos,len){
+  var v=0;
+  for(var a=0;a<len;a++)v+=b[pos+a]<<(a*8);
+  return v>>>0;
+}
+function idcReadStr(b,pos,len,useKey,itemId){
+  var r='';
+  if(useKey){
+    for(var a=0;a<len;a++)r+=String.fromCharCode(b[a+pos]^IDC_KEY.charCodeAt((itemId+a)%IDC_KEY.length));
+  }else{
+    for(var a2=0;a2<len;a2++)r+=String.fromCharCode(b[a2+pos]);
+  }
+  return r;
+}
+function idcDecode(u8){
+  var b=u8 instanceof Uint8Array?u8:new Uint8Array(u8);
+  var p=6;
+  var version=idcReadNum(b,0,2);
+  var item_count=idcReadNum(b,2,4);
+  if(version>26)throw new Error('Unsupported items.dat version: '+version);
+  var out={version:version,item_count:item_count,items:[]};
+  for(var a=0;a<item_count;a++){
+    var it={};
+    it.item_id=idcReadNum(b,p,4);p+=4;
+    it.editable_type=b[p++];it.item_category=b[p++];it.action_type=b[p++];it.hit_sound_type=b[p++];
+    var len=idcReadNum(b,p,2);p+=2;
+    it.name=idcReadStr(b,p,len,true,Number(it.item_id));p+=len;
+    len=idcReadNum(b,p,2);p+=2;
+    it.texture=idcReadStr(b,p,len);p+=len;
+    it.texture_hash=idcReadNum(b,p,4);p+=4;
+    it.item_kind=b[p++];
+    it.val1=idcReadNum(b,p,4);p+=4;
+    it.texture_x=b[p++];it.texture_y=b[p++];it.spread_type=b[p++];it.is_stripey_wallpaper=b[p++];it.collision_type=b[p++];
+    var bh=b[p++];
+    it.break_hits=(bh%6)!==0?bh+'r':bh/6;
+    it.drop_chance=idcReadNum(b,p,4);p+=4;
+    it.clothing_type=b[p++];
+    it.rarity=idcReadNum(b,p,2);p+=2;
+    it.max_amount=b[p++];
+    len=idcReadNum(b,p,2);p+=2;
+    it.extra_file=idcReadStr(b,p,len);p+=len;
+    it.extra_file_hash=idcReadNum(b,p,4);p+=4;
+    it.audio_volume=idcReadNum(b,p,4);p+=4;
+    len=idcReadNum(b,p,2);p+=2;it.pet_name=idcReadStr(b,p,len);p+=len;
+    len=idcReadNum(b,p,2);p+=2;it.pet_prefix=idcReadStr(b,p,len);p+=len;
+    len=idcReadNum(b,p,2);p+=2;it.pet_suffix=idcReadStr(b,p,len);p+=len;
+    len=idcReadNum(b,p,2);p+=2;it.pet_ability=idcReadStr(b,p,len);p+=len;
+    it.seed_base=b[p++];it.seed_overlay=b[p++];it.tree_base=b[p++];it.tree_leaves=b[p++];
+    it.seed_color={a:b[p++],r:b[p++],g:b[p++],b:b[p++]};
+    it.seed_overlay_color={a:b[p++],r:b[p++],g:b[p++],b:b[p++]};
+    p+=4; /* ingredients */
+    it.grow_time=idcReadNum(b,p,4);p+=4;
+    it.val2=idcReadNum(b,p,2);p+=2;
+    it.is_rayman=idcReadNum(b,p,2);p+=2;
+    len=idcReadNum(b,p,2);p+=2;it.extra_options=idcReadStr(b,p,len);p+=len;
+    len=idcReadNum(b,p,2);p+=2;it.texture2=idcReadStr(b,p,len);p+=len;
+    len=idcReadNum(b,p,2);p+=2;it.extra_options2=idcReadStr(b,p,len);p+=len;
+    it.data_position_80=idcHex(b,p,p+80);p+=80;
+    it.punch_options='';it.data_version_12='';it.int_version_13=0;it.int_version_14=0;
+    it.data_version_15='';it.str_version_15='';it.str_version_16='';it.int_version_17=0;
+    it.int_version_18=0;it.data_version_19='';it.int_version_21=0;it.str_version_22='';
+    it.int_version_23=0;it.byte_version_24=0;it.str_version_25='';it.int_version_26=0;it.byte_version_26=0;
+    if(version>=11){len=idcReadNum(b,p,2);p+=2;it.punch_options=idcReadStr(b,p,len);p+=len;}
+    if(version>=12){it.data_version_12=idcHex(b,p,p+13);p+=13;}
+    if(version>=13){it.int_version_13=idcReadNum(b,p,4);p+=4;}
+    if(version>=14){it.int_version_14=idcReadNum(b,p,4);p+=4;}
+    if(version>=15){
+      it.data_version_15=idcHex(b,p,p+25);p+=25;
+      len=idcReadNum(b,p,2);p+=2;it.str_version_15=idcReadStr(b,p,len);p+=len;
+    }
+    if(version>=16){len=idcReadNum(b,p,2);p+=2;it.str_version_16=idcReadStr(b,p,len);p+=len;}
+    if(version>=17){it.int_version_17=idcReadNum(b,p,4);p+=4;}
+    if(version>=18){it.int_version_18=idcReadNum(b,p,4);p+=4;}
+    if(version>=19){it.data_version_19=idcHex(b,p,p+9);p+=9;}
+    if(version>=21){it.int_version_21=idcReadNum(b,p,2);p+=2;}
+    if(version>=22){len=idcReadNum(b,p,2);p+=2;it.str_version_22=idcReadStr(b,p,len);p+=len;}
+    if(version>=23){it.int_version_23=idcReadNum(b,p,4);p+=4;}
+    if(version>=24){it.byte_version_24=b[p++];}
+    if(version>=25){len=idcReadNum(b,p,2);p+=2;it.str_version_25=idcReadStr(b,p,len);p+=len;}
+    if(version>=26){it.int_version_26=idcReadNum(b,p,4);p+=4;it.byte_version_26=b[p++];}
+    out.items[a]=it;
+  }
+  return out;
+}
+function idcNormColor(c){
+  if(c&&typeof c==='object')return{a:c.a&255,r:c.r&255,g:c.g&255,b:c.b&255};
+  if(typeof c==='string'){var pr=c.split(',').map(Number);return{a:pr[0]&255,r:pr[1]&255,g:pr[2]&255,b:pr[3]&255};}
+  return{a:0,r:0,g:0,b:0};
+}
+function idcEncode(result){
+  var version=Number(result.version);
+  var items=result.items||[];
+  var item_count=(result.item_count!=null)?Number(result.item_count):items.length;
+  var cap=1<<22;
+  var buf=new Uint8Array(cap);
+  var p=6;
+  function ensure(extra){
+    if(p+extra<=cap)return;
+    while(cap<p+extra)cap*=2;
+    var nb=new Uint8Array(cap);nb.set(buf.subarray(0,p));buf=nb;
+  }
+  function wnum(pos,len,value){
+    value=Number(value)>>>0;
+    for(var a=0;a<len;a++)buf[pos+a]=(value>>(a*8))&255;
+  }
+  function wstr(len,value,useKey,itemId){
+    value=String(value==null?'':value);
+    ensure(len);
+    for(var a=0;a<len;a++){
+      if(useKey)buf[p+a]=value.charCodeAt(a)^IDC_KEY.charCodeAt((a+itemId)%IDC_KEY.length);
+      else buf[p+a]=value.charCodeAt(a);
+    }
+    p+=len;
+  }
+  function wlenstr(value,useKey,itemId){
+    value=String(value==null?'':value);
+    ensure(2+value.length);
+    wnum(p,2,value.length);p+=2;
+    wstr(value.length,value,useKey,itemId);
+  }
+  function whex(hexString,fixedLen){
+    ensure(fixedLen);
+    hexString=String(hexString||'').replace(/ /g,'');
+    var m=hexString.match(/[\dA-F]{2}/gi)||[];
+    for(var i=0;i<fixedLen;i++)buf[p+i]=0;
+    for(var j=0;j<m.length&&j<fixedLen;j++)buf[p+j]=parseInt(m[j],16);
+    p+=fixedLen;
+  }
+  wnum(0,2,version);
+  wnum(2,4,item_count);
+  for(var a=0;a<item_count;a++){
+    var it=items[a];
+    ensure(400);
+    wnum(p,4,it.item_id);p+=4;
+    buf[p++]=it.editable_type;buf[p++]=it.item_category;buf[p++]=it.action_type;buf[p++]=it.hit_sound_type;
+    wlenstr(it.name,true,Number(it.item_id));
+    wlenstr(it.texture);
+    ensure(30);
+    wnum(p,4,it.texture_hash);p+=4;
+    buf[p++]=it.item_kind;
+    wnum(p,4,it.val1);p+=4;
+    buf[p++]=it.texture_x;buf[p++]=it.texture_y;buf[p++]=it.spread_type;buf[p++]=it.is_stripey_wallpaper;buf[p++]=it.collision_type;
+    var bh=String(it.break_hits);
+    if(bh.charAt(bh.length-1)==='r')buf[p++]=Number(bh.slice(0,-1));
+    else buf[p++]=Number(it.break_hits)*6;
+    wnum(p,4,it.drop_chance);p+=4;
+    buf[p++]=it.clothing_type;
+    wnum(p,2,it.rarity);p+=2;
+    buf[p++]=it.max_amount;
+    wlenstr(it.extra_file);
+    ensure(8);
+    wnum(p,4,it.extra_file_hash);p+=4;
+    wnum(p,4,it.audio_volume);p+=4;
+    wlenstr(it.pet_name);wlenstr(it.pet_prefix);wlenstr(it.pet_suffix);wlenstr(it.pet_ability);
+    ensure(40);
+    buf[p++]=it.seed_base;buf[p++]=it.seed_overlay;buf[p++]=it.tree_base;buf[p++]=it.tree_leaves;
+    var sc=idcNormColor(it.seed_color);
+    buf[p++]=sc.a;buf[p++]=sc.r;buf[p++]=sc.g;buf[p++]=sc.b;
+    var soc=idcNormColor(it.seed_overlay_color);
+    buf[p++]=soc.a;buf[p++]=soc.r;buf[p++]=soc.g;buf[p++]=soc.b;
+    wnum(p,4,0);p+=4; /* ingredients */
+    wnum(p,4,it.grow_time);p+=4;
+    wnum(p,2,it.val2);p+=2;
+    wnum(p,2,it.is_rayman);p+=2;
+    wlenstr(it.extra_options);wlenstr(it.texture2);wlenstr(it.extra_options2);
+    whex(it.data_position_80,80);
+    if(version>=11)wlenstr(it.punch_options);
+    if(version>=12)whex(it.data_version_12,13);
+    ensure(20);
+    if(version>=13){wnum(p,4,it.int_version_13);p+=4;}
+    if(version>=14){wnum(p,4,it.int_version_14);p+=4;}
+    if(version>=15){whex(it.data_version_15,25);wlenstr(it.str_version_15);}
+    if(version>=16)wlenstr(it.str_version_16);
+    ensure(30);
+    if(version>=17){wnum(p,4,it.int_version_17);p+=4;}
+    if(version>=18){wnum(p,4,it.int_version_18);p+=4;}
+    if(version>=19)whex(it.data_version_19,9);
+    if(version>=21){wnum(p,2,it.int_version_21);p+=2;}
+    if(version>=22)wlenstr(it.str_version_22);
+    ensure(12);
+    if(version>=23){wnum(p,4,it.int_version_23);p+=4;}
+    if(version>=24){buf[p++]=it.byte_version_24;}
+    if(version>=25)wlenstr(it.str_version_25);
+    ensure(8);
+    if(version>=26){wnum(p,4,it.int_version_26);p+=4;buf[p++]=it.byte_version_26;}
+  }
+  return buf.slice(0,p);
+}
+
+/* ---------- Items.dat Converter ---------- */
+var IDC_TXT_FIELDS=['item_id','name','item_category','rarity','max_amount','texture','texture_hash','extra_file','extra_file_hash'];
+function idcDefaultItem(){
+  return{item_id:0,editable_type:0,item_category:0,action_type:0,hit_sound_type:0,
+    name:'',texture:'',texture_hash:0,item_kind:0,val1:0,texture_x:0,texture_y:0,
+    spread_type:0,is_stripey_wallpaper:0,collision_type:0,break_hits:0,
+    drop_chance:0,clothing_type:0,rarity:0,max_amount:0,extra_file:'',
+    extra_file_hash:0,audio_volume:0,pet_name:'',pet_prefix:'',pet_suffix:'',
+    pet_ability:'',seed_base:0,seed_overlay:0,tree_base:0,tree_leaves:0,
+    seed_color:{a:0,r:0,g:0,b:0},seed_overlay_color:{a:0,r:0,g:0,b:0},
+    grow_time:0,val2:0,is_rayman:0,extra_options:'',texture2:'',extra_options2:'',
+    data_position_80:'',punch_options:'',data_version_12:'',int_version_13:0,int_version_14:0,
+    data_version_15:'',str_version_15:'',str_version_16:'',int_version_17:0,
+    int_version_18:0,data_version_19:'',int_version_21:0,str_version_22:'',
+    int_version_23:0,byte_version_24:0,str_version_25:'',int_version_26:0,byte_version_26:0};
+}
+function idcToTxt(data){
+  var lines=['# items.dat text dump - core fields only','# version='+data.version+' item_count='+data.item_count,
+    '# columns: '+IDC_TXT_FIELDS.join('|')];
+  for(var i=0;i<data.items.length;i++){
+    var it=data.items[i],cols=[];
+    for(var f=0;f<IDC_TXT_FIELDS.length;f++){
+      var v=it[IDC_TXT_FIELDS[f]];
+      cols.push(String(v==null?'':v).replace(/\|/g,'/').replace(/[\r\n]/g,' '));
+    }
+    lines.push(cols.join('|'));
+  }
+  return lines.join('\n')+'\n';
+}
+function idcFromTxt(text){
+  var lines=text.split(/\r?\n/);
+  var version=26,items=[];
+  for(var i=0;i<lines.length;i++){
+    var ln=lines[i].trim();
+    if(!ln)continue;
+    if(ln.charAt(0)==='#'){
+      var m=ln.match(/version=(\d+)/);
+      if(m)version=parseInt(m[1],10);
+      continue;
+    }
+    var cols=ln.split('|');
+    var it=idcDefaultItem();
+    it.item_id=parseInt(cols[0],10)||0;
+    it.name=cols[1]||'';
+    it.item_category=parseInt(cols[2],10)||0;
+    it.rarity=parseInt(cols[3],10)||0;
+    it.max_amount=parseInt(cols[4],10)||0;
+    it.texture=cols[5]||'';
+    it.texture_hash=parseInt(cols[6],10)||0;
+    it.extra_file=cols[7]||'';
+    it.extra_file_hash=parseInt(cols[8],10)||0;
+    items.push(it);
+  }
+  return{version:version,item_count:items.length,items:items};
+}
+var idcMode='',idcOut=null,idcOutName='',idcOutMime='';
+function idcPick(mode){
+  idcMode=mode;
+  var f=$('#idcFile');
+  f.accept=(mode==='dat2json'||mode==='dat2txt')?'.dat':(mode==='json2dat'?'.json':'.txt');
+  f.click();
+}
+function idcSetPreview(text){
+  var lines=text.split('\n');
+  $('#idcPreview').value=lines.slice(0,200).join('\n')+(lines.length>200?'\n... ('+(lines.length-200)+' more lines)':'');
+}
+$('#idcFile').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  var mode=idcMode,base=f.name.replace(/\.[^.]+$/,'');
+  $('#idcInfo').textContent='Converting... this may take a moment for big files.';
+  var r=new FileReader();
+  r.onerror=function(){toast('Failed to read file','err');};
+  r.onload=function(){
+    setTimeout(function(){
+      try{
+        if(mode==='dat2json'||mode==='dat2txt'){
+          var data=idcDecode(new Uint8Array(r.result));
+          if(mode==='dat2json'){
+            var json=JSON.stringify(data,null,2);
+            idcOut=json;idcOutName=base+'.json';idcOutMime='application/json';
+            idcSetPreview(json.slice(0,40000));
+          }else{
+            var txt=idcToTxt(data);
+            idcOut=txt;idcOutName=base+'.txt';idcOutMime='text/plain';
+            idcSetPreview(txt);
+          }
+          $('#idcInfo').textContent='Decoded OK - version '+data.version+', '+data.item_count+' items. Output ready.';
+        }else{
+          var obj=(mode==='json2dat')?JSON.parse(r.result):idcFromTxt(r.result);
+          if(!obj||!obj.items||!obj.items.length)throw new Error('No items found in input');
+          var bytes=idcEncode(obj);
+          idcOut=bytes;idcOutName=base+'.dat';idcOutMime='application/octet-stream';
+          idcSetPreview('Binary items.dat built.\nversion: '+obj.version+'\nitems: '+obj.items.length+'\nsize: '+bytes.length+' bytes');
+          $('#idcInfo').textContent='Encoded OK - '+obj.items.length+' items, '+bytes.length+' bytes.';
+        }
+        $('#idcDl').disabled=false;
+        toast('Conversion done','ok');
+      }catch(err){
+        $('#idcInfo').textContent='Error: '+err.message;
+        toast('Convert error: '+err.message,'err');
+      }
+    },20);
+  };
+  if(mode==='dat2json'||mode==='dat2txt')r.readAsArrayBuffer(f);
+  else r.readAsText(f);
+  e.target.value='';
+});
+function idcDownload(){
+  if(idcOut==null)return toast('Nothing converted yet','err');
+  saveBlob(idcOut,idcOutName,idcOutMime);
 }
 </script>
 </body>

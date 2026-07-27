@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>GloryPs Admin - Gem Shop Editor</title>
+<title>GloryPs Admin - Store Manager</title>
 <style>
 :root{
-  --bg:#0d0d0d; --panel:#141414; --panel2:#191919; --panel3:#111; --border:#262626;
+  --bg:#0d0d0d; --panel:#141414; --panel2:#191919; --border:#262626;
   --text:#e0e0e0; --muted:#8a939b; --accent:#3a4a5a; --accent2:#2e3d4d;
   --ok:#4a6a55; --err:#7a4a4a; --warn:#6a5a3a;
 }
@@ -15,239 +15,269 @@ html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;overflow-x:hidden}
 a{color:inherit}
 :focus-visible{outline:2px solid #4a6a8a;outline-offset:2px}
-.topbar{display:flex;position:sticky;top:0;z-index:40;background:var(--panel3);border-bottom:1px solid var(--border);padding:10px 14px;align-items:center;gap:12px}
+.topbar{display:flex;position:sticky;top:0;z-index:40;background:#111;border-bottom:1px solid var(--border);padding:10px 14px;align-items:center;gap:12px;flex-wrap:wrap}
 .topbar h1{font-size:14px;margin:0;font-weight:600;flex-shrink:0}
-.topbar .search{flex:1;min-width:0}
-.topbar .search input{width:100%;background:#0d0d0d;border:1px solid #2c2c2c;border-radius:7px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;min-height:40px}
-.topbar .cnt{font-size:11px;color:var(--muted);flex-shrink:0;white-space:nowrap}
-main{max-width:1100px;margin:0 auto;padding:20px 24px}
-h2{font-size:18px;font-weight:600;margin:0 0 4px}
-p.sub{color:var(--muted);font-size:12px;margin:0 0 16px}
+.topbar .spacer{flex:1}
+main{max-width:1200px;margin:0 auto;padding:20px 24px}
+h2{font-size:17px;font-weight:600;margin:22px 0 4px}
+p.sub{color:var(--muted);font-size:12px;margin:0 0 14px;line-height:1.5}
 .btn{background:var(--accent2);border:1px solid var(--accent);color:#dfe6ec;padding:9px 16px;border-radius:7px;font-size:13px;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
 .btn:hover{background:#354657}
 .btn.ok{background:#26382e;border-color:var(--ok)}.btn.ok:hover{background:#2e4438}
 .btn.danger{background:#3a2626;border-color:var(--err)}.btn.danger:hover{background:#442e2e}
 .btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}.btn.ghost:hover{color:var(--text);border-color:var(--accent)}
 .btn.sm{padding:6px 12px;font-size:12px;min-height:40px}
-.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-.note{background:#1a1810;border:1px solid var(--warn);border-radius:8px;padding:10px 14px;font-size:12px;color:#c9b98a;margin-bottom:16px;line-height:1.5}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-.card .nm{font-weight:600;font-size:14px;min-width:160px}
-.card .nm span{display:block;font-weight:400;font-size:11px;color:var(--muted);font-family:ui-monospace,monospace}
-.card .price{font-size:13px;color:#a8c3a8;min-width:110px}
-.card .price.v{color:#c3b48a}
-.card .items{flex:1;min-width:180px;font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;word-break:break-word}
-.card .acts{display:flex;gap:6px}
-.empty{color:var(--muted);text-align:center;padding:60px 20px}
-.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 5px}
-.field input,.field select{width:100%;background:#0d0d0d;border:1px solid #2c2c2c;border-radius:7px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;min-height:40px}
-.field input:focus,.field select:focus{border-color:var(--accent)}
-.field .hint{font-size:10px;color:#666;margin-top:3px}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
-.field.full{grid-column:1/-1}
-.itemsrows .irow{display:flex;gap:8px;margin-bottom:8px;align-items:center}
-.itemsrows .irow input{flex:1}
-.itemsrows .irow .rm{flex:0 0 auto}
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}
-.modal-bg.show{display:flex}
-.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;width:100%;max-width:560px;margin:auto}
-.modal h3{margin:0 0 14px;font-size:16px}
-pre.snippet{background:#0a0a0a;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;color:#9fb3c8}
+.note{background:#1a1810;border:1px solid var(--warn);border-radius:8px;padding:10px 14px;font-size:12px;color:#c9b98a;margin:14px 0;line-height:1.5}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+input,select{background:#0d0d0d;border:1px solid #2c2c2c;border-radius:7px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;min-height:40px}
+input:focus,select:focus{border-color:var(--accent)}
+.layoutgrid{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+.tabitem{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);margin-bottom:8px;cursor:pointer;min-height:40px}
+.tabitem:hover{border-color:var(--accent)}
+.tabitem.active{border-color:#4a6a8a;background:#182028}
+.tabitem .tl{font-weight:600;font-size:13px}
+.tabitem .tm{color:var(--muted);font-size:11px;font-family:ui-monospace,monospace}
+.fieldrow{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.fieldrow label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.fieldrow input,.fieldrow select{min-width:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 6px;text-align:left;border-bottom:1px solid var(--border);vertical-align:middle}
+th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+td input,td select{width:100%;min-width:60px;padding:8px 8px;font-size:13px}
+td input.w-num{max-width:80px}
+.swatch{display:inline-block;width:18px;height:18px;border-radius:4px;border:1px solid var(--border);vertical-align:middle}
+.empty{color:var(--muted);text-align:center;padding:40px 20px}
+.tablewrap{overflow-x:auto}
 #toast{position:fixed;bottom:20px;right:20px;z-index:100;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 16px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:340px}
 .toast.ok{border-left-color:var(--ok)}.toast.err{border-left-color:var(--err)}
-@media(max-width:768px){
+.dirty{color:#c9b98a;font-size:12px;display:none}
+.dirty.show{display:inline}
+@media(max-width:900px){
   main{padding:14px}
-  .formgrid{grid-template-columns:1fr}
-  .card{flex-direction:column;align-items:flex-start;gap:8px}
-  .card .acts{width:100%}
-  .card .acts .btn{flex:1}
+  .layoutgrid{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
 <div class="topbar">
   <a class="btn sm ghost" href="/admin">Back</a>
-  <h1>Gem Shop Editor</h1>
-  <div class="search"><input id="q" placeholder="Search by name or item id..." oninput="renderList()"></div>
-  <div class="cnt" id="cnt"></div>
+  <h1>Store Manager</h1>
+  <span class="dirty" id="dirtyLayout">unsaved layout changes</span>
+  <span class="spacer"></span>
+  <button class="btn ok sm" onclick="saveLayout()">Save Layout</button>
+  <button class="btn ok sm" onclick="saveTemplates()">Save Templates</button>
 </div>
 <main>
   <div class="note">
-    Purchases are data-driven: each button reads database/shop/-&lt;name&gt;.json at buy time, so price and granted items take effect immediately with no rebuild.
-    Button VISIBILITY in the in-game store UI is defined separately in shop_tab() (WorldInfo.h). To make a NEW button visible, add its add_button line there and rebuild the server. Deleting a JSON here disables the purchase but the button stays visible until removed from shop_tab() and rebuilt.
+    <b>Live-editable gem store.</b> Changes take effect the next time a player opens the store — no game rebuild or restart needed.
+    Layout is written to database/shop_layout.json; templates to database/shop_templates.json.
+    Saving the layout auto-creates any missing -name.json price files in database/shop/.
   </div>
-  <div class="btnrow">
-    <button class="btn ok" onclick="openForm(null)">Add Shop Entry</button>
-    <button class="btn ghost" onclick="load()">Refresh</button>
+
+  <h2>Tabs and Buttons</h2>
+  <p class="sub">Pick a tab on the left, edit its buttons on the right. nav must be one of the built-in store pages; id is fixed tab1..tab6.</p>
+  <div class="layoutgrid">
+    <div class="card">
+      <div id="tablist"><div class="empty">Loading...</div></div>
+      <button class="btn sm" onclick="addTab()">Add Tab</button>
+    </div>
+    <div class="card" id="tabeditor">
+      <div class="empty">Select a tab.</div>
+    </div>
   </div>
-  <div id="list"><div class="empty">Loading...</div></div>
+
+  <h2>Templates</h2>
+  <p class="sub">Templates control the button frame graphic and label color. Frame must be one of the 5 built-in client frames.</p>
+  <div class="card">
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Key</th><th>Name</th><th>Frame</th><th>Color</th><th></th></tr></thead>
+      <tbody id="tplbody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+    <div class="fieldrow" style="margin-top:12px">
+      <label>Key<input id="tplkey" placeholder="green" maxlength="24" style="max-width:140px"></label>
+      <label>Name<input id="tplname" placeholder="Green" maxlength="32" style="max-width:160px"></label>
+      <label>Frame<select id="tplframe"></select></label>
+      <label>Color<input id="tplcolor" type="color" value="#caa53a" style="padding:4px;width:70px"></label>
+      <label>&nbsp;<button class="btn ok sm" onclick="addTemplate()">Add Template</button></label>
+    </div>
+  </div>
 </main>
-
-<div class="modal-bg" id="modalbg" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <h3 id="mtitle">Add Shop Entry</h3>
-    <div class="formgrid">
-      <div class="field">
-        <label>Button name (filename)</label>
-        <input id="f_name" placeholder="e.g. small_lock">
-        <div class="hint">Saved as -&lt;name&gt;.json. Letters, digits, _ and - only. Must match the add_button name in shop_tab().</div>
-      </div>
-      <div class="field">
-        <label>Display name (p)</label>
-        <input id="f_p" placeholder="e.g. Small Lock">
-      </div>
-      <div class="field">
-        <label>Price type</label>
-        <select id="f_ptype"><option value="g">Gems (g)</option><option value="v">Vouchers (v)</option></select>
-      </div>
-      <div class="field">
-        <label>Price amount</label>
-        <input id="f_price" type="number" min="0" step="1" placeholder="e.g. 50">
-      </div>
-      <div class="field full">
-        <label>Items granted (item id x quantity)</label>
-        <div class="itemsrows" id="rows"></div>
-        <button class="btn sm ghost" onclick="addRow()">Add Row</button>
-      </div>
-      <div class="field full">
-        <label>add_button snippet for shop_tab() (copy into WorldInfo.h + rebuild to make the button visible)</label>
-        <pre class="snippet" id="snippet"></pre>
-        <button class="btn sm ghost" onclick="copySnippet()">Copy Snippet</button>
-      </div>
-    </div>
-    <div class="btnrow" style="margin-top:16px;margin-bottom:0">
-      <button class="btn ok" onclick="save()">Save</button>
-      <button class="btn ghost" onclick="closeModal()">Cancel</button>
-    </div>
-  </div>
-</div>
 <div id="toast"></div>
-
 <script>
-let CSRF='', ENTRIES=[], EDITING=null;
+let CSRF='', TABS=[], TPLS={}, SEL=-1;
+const NAVS=['main','itempack','weather','locks','token','bigiitems'];
+const FRAMES=['staticYellowFrame','staticBlueFrame','staticRedFrame','staticPurpleFrame','staticGreyFrame'];
 
-function toast(msg,type){const t=document.createElement('div');t.className='toast '+(type||'');t.textContent=msg;document.getElementById('toast').appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},3200);}
-const esc=s=>String(s==null?"":s).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg,type){const t=document.createElement('div');t.className='toast '+(type||'');t.textContent=msg;document.getElementById('toast').appendChild(t);setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(function(){t.remove();},400);},3200);}
+const esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 
-async function api(pathname,opts={}){
+async function api(pathname,opts){
+  opts=opts||{};
   opts.headers=opts.headers||{};
   if(opts.body){opts.headers['Content-Type']='application/json';}
   if(['POST','PUT','DELETE'].includes((opts.method||'GET').toUpperCase())){opts.headers['X-CSRF-Token']=CSRF;}
   const r=await fetch('/admin'+pathname,opts);
   if(r.status===401){location.href='/admin/login';throw new Error('unauth');}
-  const j=await r.json().catch(()=>({}));
+  const j=await r.json().catch(function(){return{};});
   if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
   return j;
+}
+
+function markDirty(){document.getElementById('dirtyLayout').classList.add('show');}
+function clearDirty(){document.getElementById('dirtyLayout').classList.remove('show');}
+
+function opts(list,sel){return list.map(function(v){return '<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+esc(v)+'</option>';}).join('');}
+function tplOpts(sel){return Object.keys(TPLS).map(function(k){return '<option value="'+esc(k)+'"'+(k===sel?' selected':'')+'>'+esc(k)+'</option>';}).join('');}
+
+/* ---------- tabs ---------- */
+function renderTabs(){
+  const el=document.getElementById('tablist');
+  if(!TABS.length){el.innerHTML='<div class="empty">No tabs. Add one.</div>';return;}
+  el.innerHTML=TABS.map(function(t,i){
+    return '<div class="tabitem'+(i===SEL?' active':'')+'" onclick="selTab('+i+')">'+
+      '<span class="tl">'+esc(t.label||t.id)+'</span>'+
+      '<span class="tm">'+esc(t.id)+' | nav: '+esc(t.nav)+' | '+(t.buttons?t.buttons.length:0)+' buttons</span>'+
+      '<span class="tm">'+esc(t.icon||'')+'</span></div>';
+  }).join('');
+}
+
+function selTab(i){SEL=i;renderTabs();renderEditor();}
+
+function addTab(){
+  if(TABS.length>=6){toast('Maximum 6 tabs (tab1..tab6)','err');return;}
+  const used=TABS.map(function(t){return t.id;});
+  let id='tab1';for(let n=1;n<=6;n++){if(!used.includes('tab'+n)){id='tab'+n;break;}}
+  TABS.push({id:id,nav:'main',label:'New Tab',icon:'interface/large/gtps_shop_btn.rttex',buttons:[]});
+  SEL=TABS.length-1;markDirty();renderTabs();renderEditor();
+}
+
+function removeTab(){
+  if(SEL<0)return;
+  if(!confirm('Remove tab "'+(TABS[SEL].label||TABS[SEL].id)+'" and its '+(TABS[SEL].buttons||[]).length+' buttons?'))return;
+  TABS.splice(SEL,1);SEL=TABS.length?Math.min(SEL,TABS.length-1):-1;
+  markDirty();renderTabs();renderEditor();
+}
+
+function setTabField(f,v){if(SEL<0)return;TABS[SEL][f]=v;markDirty();renderTabs();}
+
+/* ---------- buttons ---------- */
+function renderEditor(){
+  const el=document.getElementById('tabeditor');
+  if(SEL<0||!TABS[SEL]){el.innerHTML='<div class="empty">Select a tab.</div>';return;}
+  const t=TABS[SEL];
+  let h='<div class="fieldrow">'+
+    '<label>Label<input value="'+esc(t.label)+'" maxlength="32" onchange="setTabField(\'label\',this.value)" style="max-width:160px"></label>'+
+    '<label>Nav<select onchange="setTabField(\'nav\',this.value);renderTabs()">'+opts(NAVS,t.nav)+'</select></label>'+
+    '<label>Icon<input value="'+esc(t.icon)+'" onchange="setTabField(\'icon\',this.value)" style="min-width:260px"></label>'+
+    '<label>&nbsp;<button class="btn danger sm" onclick="removeTab()">Remove Tab</button></label>'+
+    '</div><div class="tablewrap"><table><thead><tr><th>Name</th><th>Item ID</th><th>Qty</th><th>Currency</th><th>Price</th><th>Label</th><th>Template</th><th></th></tr></thead><tbody>';
+  const btns=t.buttons=t.buttons||[];
+  if(!btns.length)h+='<tr><td colspan="8" class="empty">No buttons yet.</td></tr>';
+  btns.forEach(function(b,j){
+    h+='<tr>'+
+      '<td><input value="'+esc(b.name)+'" onchange="setBtn('+j+',\'name\',this.value)" style="min-width:110px"></td>'+
+      '<td><input class="w-num" type="number" min="0" value="'+esc(b.item)+'" onchange="setBtn('+j+',\'item\',Number(this.value))"></td>'+
+      '<td><input class="w-num" type="number" min="1" value="'+esc(b.qty)+'" onchange="setBtn('+j+',\'qty\',Number(this.value))"></td>'+
+      '<td><select onchange="setBtn('+j+',\'currency\',this.value)">'+opts(['gems','tokens'],b.currency)+'</select></td>'+
+      '<td><input class="w-num" type="number" min="0" value="'+esc(b.price)+'" onchange="setBtn('+j+',\'price\',Number(this.value))"></td>'+
+      '<td><input value="'+esc(b.label)+'" onchange="setBtn('+j+',\'label\',this.value)" style="min-width:110px"></td>'+
+      '<td><select onchange="setBtn('+j+',\'template\',this.value)">'+tplOpts(b.template)+'</select></td>'+
+      '<td><button class="btn danger sm" onclick="removeBtn('+j+')">Remove</button></td></tr>';
+  });
+  h+='</tbody></table></div><div style="margin-top:10px"><button class="btn sm" onclick="addBtn()">Add Button</button></div>';
+  el.innerHTML=h;
+}
+
+function setBtn(j,f,v){if(SEL<0)return;TABS[SEL].buttons[j][f]=v;markDirty();if(f==='name'||f==='label')renderTabs();}
+function addBtn(){
+  if(SEL<0)return;
+  const tplKeys=Object.keys(TPLS);
+  TABS[SEL].buttons.push({name:'new_item',item:2,qty:1,currency:'gems',price:100,label:'New Item',template:tplKeys[0]||'yellow'});
+  markDirty();renderTabs();renderEditor();
+}
+function removeBtn(j){if(SEL<0)return;TABS[SEL].buttons.splice(j,1);markDirty();renderTabs();renderEditor();}
+
+/* ---------- templates ---------- */
+function renderTemplates(){
+  const tb=document.getElementById('tplbody');
+  const keys=Object.keys(TPLS);
+  if(!keys.length){tb.innerHTML='<tr><td colspan="5" class="empty">No templates.</td></tr>';return;}
+  tb.innerHTML=keys.map(function(k){
+    const t=TPLS[k];
+    return '<tr><td style="font-family:ui-monospace,monospace">'+esc(k)+'</td>'+
+      '<td><input value="'+esc(t.name)+'" maxlength="32" onchange="TPLS['+JSON.stringify(k).replace(/"/g,'&quot;')+'].name=this.value" style="max-width:140px"></td>'+
+      '<td><select onchange="TPLS['+JSON.stringify(k).replace(/"/g,'&quot;')+'].frame=this.value">'+opts(FRAMES,t.frame)+'</select></td>'+
+      '<td><span class="swatch" style="background:'+esc(t.color)+'"></span> <input type="color" value="'+esc(t.color)+'" onchange="TPLS['+JSON.stringify(k).replace(/"/g,'&quot;')+'].color=this.value" style="padding:4px;width:60px"></td>'+
+      '<td><button class="btn danger sm" onclick="removeTemplate(this.dataset.k)" data-k="'+esc(k)+'">Remove</button></td></tr>';
+  }).join('');
+}
+
+function addTemplate(){
+  const key=document.getElementById('tplkey').value.trim().toLowerCase();
+  const name=document.getElementById('tplname').value.trim();
+  const frame=document.getElementById('tplframe').value;
+  const color=document.getElementById('tplcolor').value;
+  if(!/^[a-z0-9_]{1,24}$/.test(key)){toast('Key must be lowercase letters/digits/underscore','err');return;}
+  if(!name){toast('Enter a template name','err');return;}
+  if(TPLS[key]&&!confirm('Template "'+key+'" exists. Overwrite?'))return;
+  TPLS[key]={name:name,frame:frame,color:color};
+  document.getElementById('tplkey').value='';document.getElementById('tplname').value='';
+  renderTemplates();if(SEL>=0)renderEditor();
+  toast('Template added (press Save Templates to write it)','ok');
+}
+
+function removeTemplate(k){
+  const used=TABS.some(function(t){return (t.buttons||[]).some(function(b){return b.template===k;});});
+  if(used&&!confirm('Template "'+k+'" is used by shop buttons. Remove anyway?'))return;
+  if(!used&&!confirm('Remove template "'+k+'"?'))return;
+  delete TPLS[k];renderTemplates();if(SEL>=0)renderEditor();
+}
+
+/* ---------- save/load ---------- */
+function validateLayout(){
+  for(const t of TABS){
+    if(!/^tab[1-6]$/.test(t.id))return 'Tab id "'+t.id+'" must be tab1..tab6';
+    if(!NAVS.includes(t.nav))return 'Tab "'+t.label+'": nav "'+t.nav+'" is invalid';
+    for(const b of (t.buttons||[])){
+      if(!b.name)return 'Tab "'+t.label+'": a button has no name';
+      if(!['gems','tokens'].includes(b.currency))return 'Button "'+b.name+'": bad currency';
+    }
+  }
+  const ids=TABS.map(function(t){return t.id;});
+  if(new Set(ids).size!==ids.length)return 'Duplicate tab ids';
+  return null;
+}
+
+async function saveLayout(){
+  const err=validateLayout();
+  if(err){toast(err,'err');return;}
+  try{
+    await api('/api/shop/layout',{method:'POST',body:JSON.stringify({tabs:TABS})});
+    clearDirty();toast('Layout saved. Store updates on next open.','ok');
+  }catch(e){toast(e.message,'err');}
+}
+
+async function saveTemplates(){
+  try{
+    await api('/api/shop/templates',{method:'POST',body:JSON.stringify({templates:TPLS})});
+    toast('Templates saved.','ok');
+  }catch(e){toast(e.message,'err');}
 }
 
 async function load(){
   try{
     const c=await api('/api/csrf');CSRF=c.token;
-    const d=await api('/api/shop');ENTRIES=d.entries||[];
-    renderList();
-  }catch(e){document.getElementById('list').innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
+    const lay=await api('/api/shop/layout');
+    const tpl=await api('/api/shop/templates');
+    TABS=lay.tabs||[];TPLS=tpl.templates||{};
+    document.getElementById('tplframe').innerHTML=opts(FRAMES,FRAMES[0]);
+    if(TABS.length)SEL=0;
+    renderTabs();renderEditor();renderTemplates();
+  }catch(e){toast(e.message,'err');document.getElementById('tablist').innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
 }
-
-function renderList(){
-  const q=document.getElementById('q').value.trim().toLowerCase();
-  const list=ENTRIES.filter(e=>{
-    if(!q)return true;
-    if(e.name.toLowerCase().includes(q)||String(e.p).toLowerCase().includes(q))return true;
-    return (e.itemai||[]).some(p=>String(p[0])===q);
-  });
-  document.getElementById('cnt').textContent=list.length+' / '+ENTRIES.length;
-  const el=document.getElementById('list');
-  if(!list.length){el.innerHTML='<div class="empty">No shop entries found.</div>';return;}
-  el.innerHTML=list.map(e=>{
-    const price=e.g!=null?'<div class="price">'+esc(e.g)+' gems</div>':(e.v!=null?'<div class="price v">'+esc(e.v)+' vouchers</div>':'<div class="price">-</div>');
-    const items=(e.itemai||[]).map(p=>esc(p[0])+' x '+esc(p[1])).join(', ')||'-';
-    return '<div class="card">'+
-      '<div class="nm">'+esc(e.p||'(no name)')+'<span>-'+esc(e.name)+'.json</span></div>'+
-      price+
-      '<div class="items">'+items+'</div>'+
-      '<div class="acts">'+
-        '<button class="btn sm" onclick="openForm(\''+esc(e.name)+'\')">Edit</button>'+
-        '<button class="btn sm danger" onclick="del(\''+esc(e.name)+'\')">Delete</button>'+
-      '</div></div>';
-  }).join('');
-}
-
-function addRow(id,qty){
-  const d=document.createElement('div');d.className='irow';
-  d.innerHTML='<input type="number" min="0" step="1" placeholder="Item ID" class="rid" value="'+(id!=null?esc(id):'')+'">'+
-    '<input type="number" min="1" step="1" placeholder="Quantity" class="rqty" value="'+(qty!=null?esc(qty):'')+'">'+
-    '<button class="btn sm danger rm" onclick="this.parentNode.remove();updateSnippet()">X</button>';
-  d.querySelectorAll('input').forEach(i=>i.addEventListener('input',updateSnippet));
-  document.getElementById('rows').appendChild(d);
-}
-
-function openForm(name){
-  EDITING=name;
-  document.getElementById('rows').innerHTML='';
-  const e=name?ENTRIES.find(x=>x.name===name):null;
-  document.getElementById('mtitle').textContent=e?'Edit Shop Entry':'Add Shop Entry';
-  document.getElementById('f_name').value=e?e.name:'';
-  document.getElementById('f_p').value=e?e.p:'';
-  document.getElementById('f_ptype').value=(e&&e.v!=null)?'v':'g';
-  document.getElementById('f_price').value=e?(e.v!=null?e.v:(e.g!=null?e.g:'')):'';
-  if(e&&e.itemai&&e.itemai.length){e.itemai.forEach(p=>addRow(p[0],p[1]));}else{addRow();}
-  ['f_name','f_p','f_ptype','f_price'].forEach(id=>document.getElementById(id).addEventListener('input',updateSnippet));
-  updateSnippet();
-  document.getElementById('modalbg').classList.add('show');
-}
-function closeModal(){document.getElementById('modalbg').classList.remove('show');}
-
-function readForm(){
-  const name=document.getElementById('f_name').value.trim();
-  const p=document.getElementById('f_p').value.trim();
-  const ptype=document.getElementById('f_ptype').value;
-  const price=document.getElementById('f_price').value.trim();
-  const itemai=[];
-  document.querySelectorAll('#rows .irow').forEach(r=>{
-    const id=r.querySelector('.rid').value.trim(),q=r.querySelector('.rqty').value.trim();
-    if(id!==''&&q!=='')itemai.push([Number(id),Number(q)]);
-  });
-  return {name,p,ptype,price,itemai};
-}
-
-function updateSnippet(){
-  const f=readForm();
-  const price=f.price||'0';
-  const got=f.itemai.map(x=>x[1]+' x item '+x[0]).join(', ')||'...';
-  const snip='"\\nadd_button|'+f.name+'|`o'+f.p+'``|interface/large/store_buttons/store_buttons.rttex|`2You Get:`` '+got+'.<CR><CR>`5Description:`` '+f.p+'.|0|0|'+price+'|0|||-1|-1||-1|-1||1||||||0|0|"';
-  document.getElementById('snippet').textContent=snip;
-}
-function copySnippet(){
-  const t=document.getElementById('snippet').textContent;
-  navigator.clipboard.writeText(t).then(()=>toast('Snippet copied','ok'),()=>toast('Copy failed','err'));
-}
-
-async function save(){
-  const f=readForm();
-  if(!f.name)return toast('Button name required','err');
-  if(!f.p)return toast('Display name required','err');
-  if(f.price==='')return toast('Price required','err');
-  if(!f.itemai.length)return toast('At least one item row required','err');
-  const body={name:f.name,p:f.p,itemai:f.itemai};
-  if(f.ptype==='v')body.v=Number(f.price);else body.g=Number(f.price);
-  if(EDITING&&EDITING!==f.name)body.oldName=EDITING;
-  if(!EDITING)body.mode='create';
-  try{
-    await api('/api/shop/save',{method:'POST',body:JSON.stringify(body)});
-    toast('Saved -'+f.name+'.json'+(EDITING?'':'. Remember: add the button to shop_tab() and rebuild for it to show in-game.'),'ok');
-    closeModal();load();
-  }catch(e){toast(e.message,'err');}
-}
-
-async function del(name){
-  if(!confirm('Delete -'+name+'.json?\n\nThis disables the purchase immediately, but the button will remain VISIBLE in the store UI until its add_button line is removed from shop_tab() in WorldInfo.h and the server is rebuilt.'))return;
-  try{
-    await api('/api/shop/delete',{method:'POST',body:JSON.stringify({name})});
-    toast('Deleted','ok');load();
-  }catch(e){toast(e.message,'err');}
-}
-
 load();
 </script>
 </body>

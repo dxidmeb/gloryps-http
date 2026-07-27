@@ -980,6 +980,92 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
         } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
     });
 
+    // =========================================================
+    //  SHOP LAYOUT MANAGER  (full store: tabs + buttons + templates)
+    //  The game server's shop_tab() reads database/shop_layout.json
+    //  and database/shop_templates.json. Editing these needs NO rebuild.
+    //  shop_layout.json: { "tabs":[ {id,nav,label,icon,buttons:[{name,item,qty,currency,price,label,template}]} ] }
+    //  shop_templates.json: { "templates": { key:{name,frame,color} } }
+    // =========================================================
+    function gameDbPath(rel) {
+        // resolve relative to the game server's database dir (absolute, not relative to this repo)
+        const root = "/root/90824/Core/x64/Release/database";
+        const full = path.resolve(root, rel);
+        if (!full.startsWith(root + path.sep)) return null;
+        return full;
+    }
+    const LAYOUT_FILE = "shop_layout.json";
+    const TEMPLATES_FILE = "shop_templates.json";
+
+    router.get("/api/shop/layout", (req, res) => {
+        const f = gameDbPath(LAYOUT_FILE);
+        if (!f) return res.status(400).json({ error: "bad path" });
+        try {
+            if (!fs.existsSync(f)) return res.json({ tabs: [] });
+            res.json(JSON.parse(fs.readFileSync(f, "utf8")));
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    router.get("/api/shop/templates", (req, res) => {
+        const f = gameDbPath(TEMPLATES_FILE);
+        if (!f) return res.status(400).json({ error: "bad path" });
+        try {
+            if (!fs.existsSync(f)) return res.json({ templates: {} });
+            res.json(JSON.parse(fs.readFileSync(f, "utf8")));
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    // save full layout (tabs array) atomically + auto-write price files for new buttons
+    router.post("/api/shop/layout", (req, res) => {
+        const f = gameDbPath(LAYOUT_FILE);
+        if (!f) return res.status(400).json({ error: "bad path" });
+        const body = req.body || {};
+        if (!Array.isArray(body.tabs)) return res.status(400).json({ error: "tabs must be an array" });
+        // validate + ensure price files exist for each button
+        const shopDirAbs = gameDbPath("shop");
+        try {
+            for (const t of body.tabs) {
+                if (!t || typeof t.id !== "string" || !Array.isArray(t.buttons)) return res.status(400).json({ error: "bad tab" });
+                for (const b of t.buttons) {
+                    if (!b || typeof b.name !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9_-]{0,63}$/.test(b.name)) return res.status(400).json({ error: "bad button name: " + (b && b.name) });
+                    const item = Number(b.item), qty = Number(b.qty || 1), price = Number(b.price || 0);
+                    if (!Number.isInteger(item) || item < 0 || item > 100000) return res.status(400).json({ error: "bad item id" });
+                    if (!Number.isInteger(qty) || qty < 1 || qty > 10000) return res.status(400).json({ error: "bad qty" });
+                    if (!Number.isInteger(price) || price < 0 || price > 100000000) return res.status(400).json({ error: "bad price" });
+                    // auto-create the price file (-name.json) if missing so buy() works live
+                    const cur = b.currency === "tokens" ? "v" : "g";
+                    const pf = path.join(shopDirAbs, "-" + b.name + ".json");
+                    if (!fs.existsSync(pf)) {
+                        atomicWrite(pf, JSON.stringify({ itemai: [[item, qty]], [cur]: price, p: String(b.label || b.name) }));
+                    }
+                }
+            }
+            backupFile(f);
+            atomicWrite(f, JSON.stringify({ tabs: body.tabs }, null, 2));
+            audit(req.adminUser, "SHOP_LAYOUT_SAVE", "tabs=" + body.tabs.length);
+            res.json({ success: true, tabs: body.tabs.length });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
+    // save templates (add/remove/edit colored button styles)
+    router.post("/api/shop/templates", (req, res) => {
+        const f = gameDbPath(TEMPLATES_FILE);
+        if (!f) return res.status(400).json({ error: "bad path" });
+        const body = req.body || {};
+        if (!body.templates || typeof body.templates !== "object") return res.status(400).json({ error: "templates must be an object" });
+        // validate each template: name + frame required
+        for (const k of Object.keys(body.templates)) {
+            const t = body.templates[k];
+            if (!t || typeof t.name !== "string" || typeof t.frame !== "string") return res.status(400).json({ error: "template " + k + " needs name+frame" });
+        }
+        try {
+            backupFile(f);
+            atomicWrite(f, JSON.stringify({ templates: body.templates }, null, 2));
+            audit(req.adminUser, "SHOP_TEMPLATES_SAVE", "count=" + Object.keys(body.templates).length);
+            res.json({ success: true });
+        } catch (e) { console.error("[ADMIN]", e.message); res.status(500).json(GENERIC_ERR); }
+    });
+
     /* ================================================================
      *  ROLES EDITOR
      *  - database/json/config.json      -> BUY_SHOP_CONFIG.shop_roles (tier names)
