@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>GloryPs Admin - Tools</title>
+<style>
+:root{
+  --bg:#0d0d0d; --panel:#141414; --panel2:#191919; --panel3:#111; --border:#262626;
+  --text:#e0e0e0; --muted:#8a939b; --accent:#3a4a5a; --accent2:#2e3d4d;
+  --ok:#4a6a55; --err:#7a4a4a; --warn:#6a5a3a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;overflow-x:hidden}
+a{color:inherit}
+:focus-visible{outline:2px solid #4a6a8a;outline-offset:2px}
+.app{display:flex;flex-direction:column;min-height:100vh;max-width:900px;margin:0 auto;width:100%}
+.topbar{display:flex;position:sticky;top:0;z-index:40;background:var(--panel3);border-bottom:1px solid var(--border);padding:10px 14px;align-items:center;gap:12px}
+.topbar h1{font-size:14px;margin:0;font-weight:600;flex-shrink:0}
+main{flex:1;min-width:0;overflow-x:hidden;padding:20px 24px}
+h2{font-size:18px;font-weight:600;margin:0 0 4px}
+h3{font-size:14px;font-weight:600;margin:0 0 12px;color:var(--text)}
+p.sub{color:var(--muted);font-size:12px;margin:0 0 16px}
+.btn{background:var(--accent2);border:1px solid var(--accent);color:#dfe6ec;padding:9px 16px;border-radius:7px;font-size:13px;cursor:pointer;min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:#354657}
+.btn.ok{background:#26382e;border-color:var(--ok)}.btn.ok:hover{background:#2e4438}
+.btn.ghost{background:transparent;border-color:var(--border);color:var(--muted)}.btn.ghost:hover{color:var(--text);border-color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 5px}
+.field input,.field select{width:100%;background:#0d0d0d;border:1px solid #2c2c2c;border-radius:7px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;min-height:40px}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field .hint{font-size:10px;color:#666;margin-top:3px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.section{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.result{background:#0d0d0d;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;color:var(--text);margin-top:10px;min-height:40px;display:flex;align-items:center}
+.result:empty{display:none}
+canvas.preview{max-width:100%;background:repeating-conic-gradient(#181818 0 25%,#111 0 50%) 0 0/16px 16px;border:1px solid var(--border);border-radius:7px;display:none;margin-top:10px}
+canvas.preview.show{display:block}
+input[type=file]{display:none}
+#toast{position:fixed;bottom:20px;right:20px;z-index:100;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 16px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:340px}
+.toast.ok{border-left-color:var(--ok)}.toast.err{border-left-color:var(--err)}
+@media(max-width:768px){
+  .row{grid-template-columns:1fr}
+  main{padding:14px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <h1>Tools</h1>
+    <a class="btn ghost" href="/admin" style="text-decoration:none;margin-left:auto">&larr; Back to Admin</a>
+  </div>
+  <main>
+    <h2>Browser Tools</h2>
+    <p class="sub">Everything runs locally in your browser. No files are uploaded to the server.</p>
+
+    <!-- Image Resizer -->
+    <div class="section">
+      <h3>Image Resizer</h3>
+      <p class="sub">Upload an image, set new dimensions, download as PNG.</p>
+      <div class="btnrow">
+        <button class="btn" onclick="document.getElementById('rzFile').click()">Choose Image</button>
+        <input type="file" id="rzFile" accept="image/*">
+      </div>
+      <div class="row">
+        <div class="field"><label>Width (px)</label><input type="number" id="rzW" min="1" max="8192"></div>
+        <div class="field"><label>Height (px)</label><input type="number" id="rzH" min="1" max="8192"></div>
+      </div>
+      <div class="field"><label>Filter</label>
+        <select id="rzFilter">
+          <option value="nearest">Nearest (pixelated, best for pixel art)</option>
+          <option value="linear">Linear (smooth)</option>
+        </select>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="rzApply" disabled onclick="rzApply()">Apply</button>
+        <button class="btn ok" id="rzDl" disabled onclick="rzDownload()">Download PNG</button>
+      </div>
+      <div class="result" id="rzInfo"></div>
+      <canvas id="rzCanvas" class="preview"></canvas>
+    </div>
+
+    <!-- ProtonHash -->
+    <div class="section">
+      <h3>ProtonHash Checker</h3>
+      <p class="sub">Compute the ProtonHash of any file, or of a text/path string (UTF-8 bytes). Matches the hash used by items.dat extra_file.</p>
+      <div class="btnrow">
+        <button class="btn" onclick="document.getElementById('phFile').click()">Hash File</button>
+        <input type="file" id="phFile">
+      </div>
+      <div class="field"><label>Text / Path mode</label>
+        <input type="text" id="phText" placeholder="e.g. interface/large/banner.rttex">
+        <div class="hint">Hashes the UTF-8 bytes of the string above.</div>
+      </div>
+      <div class="btnrow">
+        <button class="btn" onclick="phHashText()">Hash Text</button>
+      </div>
+      <div class="result" id="phResult"></div>
+    </div>
+
+    <!-- RTTEX converter -->
+    <div class="section">
+      <h3>RTTEX to PNG</h3>
+      <p class="sub">Upload an uncompressed .rttex file, preview it and download as PNG. RTPACK-compressed files are not supported (zlib not available in-browser).</p>
+      <div class="btnrow">
+        <button class="btn" onclick="document.getElementById('r2pFile').click()">Choose .rttex</button>
+        <input type="file" id="r2pFile" accept=".rttex">
+        <button class="btn ok" id="r2pDl" disabled onclick="r2pDownload()">Download PNG</button>
+      </div>
+      <div class="result" id="r2pInfo"></div>
+      <canvas id="r2pCanvas" class="preview"></canvas>
+    </div>
+
+    <div class="section">
+      <h3>PNG to RTTEX</h3>
+      <p class="sub">Upload a PNG (or any image); it is converted to an uncompressed RGBA .rttex, downloaded automatically, and its ProtonHash is shown (use it for extra_file_hash).</p>
+      <div class="btnrow">
+        <button class="btn" onclick="document.getElementById('p2rFile').click()">Choose Image</button>
+        <input type="file" id="p2rFile" accept="image/*">
+        <button class="btn ok" id="p2rDl" disabled onclick="p2rDownload()">Download .rttex again</button>
+      </div>
+      <div class="result" id="p2rHash"></div>
+      <canvas id="p2rCanvas" class="preview"></canvas>
+    </div>
+  </main>
+</div>
+<div id="toast"></div>
+<canvas id="workCanvas" style="display:none"></canvas>
+
+<script>
+"use strict";
+function $(s){return document.querySelector(s);}
+function toast(msg,type){
+  var d=document.createElement('div');
+  d.className='toast'+(type?' '+type:'');
+  d.textContent=msg;
+  $('#toast').appendChild(d);
+  setTimeout(function(){d.remove();},3500);
+}
+function saveBlob(bytes,fileName,mime){
+  var blob=new Blob([bytes],{type:mime||'application/octet-stream'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=fileName;a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);},2000);
+}
+function saveDataUrl(dataUrl,fileName){
+  var a=document.createElement('a');
+  a.href=dataUrl;a.download=fileName;a.click();
+}
+/* ProtonHash: h=0x55555555; per byte: h=(h>>>27)+(h<<5)+b */
+function protonHash(bytes){
+  var h=0x55555555;
+  for(var i=0;i<bytes.length;i++){h=(h>>>27)+(h<<5)+bytes[i];h=h>>>0;}
+  return h|0;
+}
+function readNum(buf,pos,len){
+  var v=0;
+  for(var a=0;a<len;a++)v+=buf[pos+a]*Math.pow(256,a);
+  return v;
+}
+function writeNum(dest,pos,len,value){
+  for(var a=0;a<len;a++)dest[pos+a]=(value>>(a*8))&255;
+}
+function bufStr(buf,pos,len){
+  var s='';
+  for(var a=0;a<len;a++)s+=String.fromCharCode(buf[pos+a]);
+  return s;
+}
+
+/* ---------- Image Resizer ---------- */
+var rzImg=null,rzName='image';
+$('#rzFile').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  if(f.type.indexOf('image')===-1){toast('Not an image file','err');return;}
+  rzName=f.name.replace(/\.[^.]+$/,'');
+  var img=new Image();
+  img.onload=function(){
+    rzImg=img;
+    $('#rzW').value=img.width;$('#rzH').value=img.height;
+    $('#rzApply').disabled=false;
+    $('#rzInfo').textContent='Loaded '+f.name+' ('+img.width+'x'+img.height+')';
+    rzDraw(img.width,img.height,'nearest');
+    toast('Image loaded','ok');
+  };
+  img.onerror=function(){toast('Failed to load image','err');};
+  img.src=URL.createObjectURL(f);
+  e.target.value='';
+});
+function rzDraw(w,h,filter){
+  var c=$('#rzCanvas'),ctx=c.getContext('2d');
+  c.width=w;c.height=h;
+  ctx.imageSmoothingEnabled=(filter!=='nearest');
+  if(filter!=='nearest')ctx.imageSmoothingQuality='high';
+  ctx.clearRect(0,0,w,h);
+  ctx.drawImage(rzImg,0,0,w,h);
+  c.classList.add('show');
+  $('#rzDl').disabled=false;
+}
+function rzApply(){
+  if(!rzImg)return toast('Load an image first','err');
+  var w=parseInt($('#rzW').value,10),h=parseInt($('#rzH').value,10);
+  if(!w||!h||w<1||h<1||w>8192||h>8192)return toast('Invalid width/height (1-8192)','err');
+  rzDraw(w,h,$('#rzFilter').value);
+  $('#rzInfo').textContent='Resized to '+w+'x'+h+' ('+$('#rzFilter').value+')';
+  toast('Resized','ok');
+}
+function rzDownload(){
+  var c=$('#rzCanvas');
+  saveDataUrl(c.toDataURL('image/png'),rzName+'_'+c.width+'x'+c.height+'.png');
+}
+
+/* ---------- ProtonHash ---------- */
+$('#phFile').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    var h=protonHash(new Uint8Array(r.result));
+    $('#phResult').textContent='File: '+f.name+' ('+f.size+' bytes) - ProtonHash: '+h+' (unsigned: '+(h>>>0)+')';
+    toast('Hash computed','ok');
+  };
+  r.onerror=function(){toast('Failed to read file','err');};
+  r.readAsArrayBuffer(f);
+  e.target.value='';
+});
+function phHashText(){
+  var t=$('#phText').value;
+  if(!t)return toast('Enter a text/path first','err');
+  var bytes=new TextEncoder().encode(t);
+  var h=protonHash(bytes);
+  $('#phResult').textContent='Text: "'+t+'" ('+bytes.length+' bytes) - ProtonHash: '+h+' (unsigned: '+(h>>>0)+')';
+}
+
+/* ---------- RTTEX -> PNG ---------- */
+var r2pName='texture';
+$('#r2pFile').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  r2pName=f.name.replace(/\.[^.]+$/,'');
+  var r=new FileReader();
+  r.onload=function(){
+    try{rttexToCanvas(new Uint8Array(r.result));}
+    catch(err){toast('Parse error: '+err.message,'err');}
+  };
+  r.readAsArrayBuffer(f);
+  e.target.value='';
+});
+function rttexToCanvas(buf){
+  if(bufStr(buf,0,6)==='RTPACK'){
+    toast('This RTTEX is RTPACK-compressed; decompression is not supported in the browser tool. Use an uncompressed RTTEX.','err');
+    $('#r2pInfo').textContent='RTPACK-compressed file: not supported (needs zlib).';
+    return;
+  }
+  if(bufStr(buf,0,6)!=='RTTXTR'){toast('Not a valid RTTEX file','err');return;}
+  var h=readNum(buf,8,4),w=readNum(buf,12,2),usesAlpha=buf[0x1c];
+  var bpp=3+(usesAlpha?1:0);
+  var need=0x7c+h*w*bpp;
+  if(buf.length<need){toast('Truncated RTTEX (expected '+need+' bytes, got '+buf.length+')','err');return;}
+  /* build RGBA image data (pixel rows stored bottom-up) */
+  var tmp=$('#workCanvas'),tctx=tmp.getContext('2d');
+  tmp.width=w;tmp.height=h;
+  var imageData=tctx.createImageData(w,h);
+  var src=0x7c,d=imageData.data;
+  if(bpp===4){
+    d.set(new Uint8ClampedArray(buf.buffer,buf.byteOffset+src,h*w*4));
+  }else{
+    for(var i=0,p=0;i<h*w;i++){
+      d[p++]=buf[src++];d[p++]=buf[src++];d[p++]=buf[src++];d[p++]=255;
+    }
+  }
+  tctx.putImageData(imageData,0,0);
+  /* flip Y onto preview canvas */
+  var c=$('#r2pCanvas'),ctx=c.getContext('2d');
+  c.width=w;c.height=h;
+  ctx.save();
+  ctx.scale(1,-1);
+  ctx.drawImage(tmp,0,-h);
+  ctx.restore();
+  c.classList.add('show');
+  $('#r2pDl').disabled=false;
+  $('#r2pInfo').textContent=w+'x'+h+', '+(usesAlpha?'RGBA':'RGB');
+  toast('RTTEX parsed','ok');
+}
+function r2pDownload(){
+  saveDataUrl($('#r2pCanvas').toDataURL('image/png'),r2pName+'.png');
+}
+
+/* ---------- PNG -> RTTEX ---------- */
+var p2rBytes=null,p2rName='texture';
+$('#p2rFile').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  if(f.type.indexOf('image')===-1){toast('Not an image file','err');return;}
+  p2rName=f.name.replace(/\.[^.]+$/,'');
+  var r=new FileReader();
+  r.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      try{
+        p2rBytes=pngToRttex(img);
+        var hash=protonHash(p2rBytes);
+        $('#p2rHash').textContent='RTTEX size: '+p2rBytes.length+' bytes - ProtonHash: '+hash+' (unsigned: '+(hash>>>0)+')';
+        $('#p2rDl').disabled=false;
+        /* preview: show the original image */
+        var c=$('#p2rCanvas'),ctx=c.getContext('2d');
+        c.width=img.width;c.height=img.height;
+        ctx.drawImage(img,0,0);
+        c.classList.add('show');
+        saveBlob(p2rBytes,p2rName+'.rttex');
+        toast('Converted and downloaded','ok');
+      }catch(err){toast('Convert error: '+err.message,'err');}
+    };
+    img.src=r.result;
+  };
+  r.readAsDataURL(f);
+  e.target.value='';
+});
+function pngToRttex(img){
+  var canvas=$('#workCanvas'),context=canvas.getContext('2d');
+  canvas.width=img.width;canvas.height=img.height;
+  context.setTransform(1,0,0,1,0,0);
+  context.clearRect(0,0,img.width,img.height);
+  context.scale(1,-1);
+  context.drawImage(img,0,-img.height);
+  context.setTransform(1,0,0,1,0,0);
+  var imageData=context.getImageData(0,0,img.width,img.height);
+  var pixelBuffer=new Uint8Array(imageData.data.buffer);
+  var header=new Uint8Array(0x7c);
+  header[0]=0x52;header[1]=0x54;header[2]=0x54;header[3]=0x58;header[4]=0x54;header[5]=0x52; /* RTTXTR */
+  writeNum(header,8,4,img.height);
+  writeNum(header,12,4,img.width);
+  writeNum(header,16,4,5121);
+  writeNum(header,20,4,img.height);
+  writeNum(header,24,4,img.width);
+  header[28]=1; /* usesAlpha */
+  header[29]=0;
+  writeNum(header,32,4,1);
+  writeNum(header,100,4,img.height);
+  writeNum(header,104,4,img.width);
+  writeNum(header,108,4,pixelBuffer.length);
+  writeNum(header,112,4,0);
+  writeNum(header,116,4,0);
+  writeNum(header,120,4,0);
+  var out=new Uint8Array(header.length+pixelBuffer.length);
+  out.set(header,0);
+  out.set(pixelBuffer,header.length);
+  return out;
+}
+function p2rDownload(){
+  if(!p2rBytes)return toast('Nothing converted yet','err');
+  saveBlob(p2rBytes,p2rName+'.rttex');
+}
+</script>
+</body>
+</html>

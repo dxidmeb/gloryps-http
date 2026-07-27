@@ -907,6 +907,9 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
         return { entry: out };
     }
 
+    // browser tools page (client-side only)
+    router.get("/tools", (req, res) => { try { res.type("html").send(fs.readFileSync(path.join(__dirname, "html", "admin_tools.html"))); } catch (e) { res.status(500).end(); } });
+
     // shop editor page
     router.get("/shop", (req, res) => { try { res.type("html").send(fs.readFileSync(path.join(__dirname, "html", "admin_shop.html"))); } catch (e) { res.status(500).end(); } });
 
