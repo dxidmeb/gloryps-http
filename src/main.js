@@ -352,9 +352,9 @@ function downloadFromCDN(relativePath, localDest, callback) {
 }
 
 // Deny-list: paths the admin has explicitly removed from the pruned cache.
-// Requests for these return 404 and are NEVER re-fetched from the CDN,
-// so deletions in the pruned cache persist. Reversible: delete the file
-// db/cache_denylist.txt and this Set stays empty.
+// These return a spoofed EMPTY 200 (never re-fetched from CDN) so deletions
+// persist BUT the client does not hard-fail/stall (same as spoof_missing_files).
+// Reversible: delete db/cache_denylist.txt and this Set stays empty.
 const DENYLIST_FILE = path.join(DB_DIR, "cache_denylist.txt");
 const denyList = new Set();
 try {
@@ -370,8 +370,8 @@ try {
 app.use("/cache", (req, res, next) => {
     const safePath = path.normalize(req.path).replace(/^(\.\.[\/\\])+/, '').replace(/^\/+/, '');
     if (denyList.has(safePath)) {
-        console.log(`${CLR.RED}[DENYLIST] blocked (admin-removed): /${safePath}${CLR.RESET}`);
-        return res.status(404).send("File not found.");
+        console.log(`${CLR.RED}[DENYLIST] spoofed empty (admin-removed): /${safePath}${CLR.RESET}`);
+        return res.status(200).send("");
     }
     const filePath = path.join(CACHE_DIR, safePath);
     fs.stat(filePath, (err, stat) => {
