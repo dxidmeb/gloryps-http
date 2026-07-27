@@ -351,8 +351,28 @@ function downloadFromCDN(relativePath, localDest, callback) {
     });
 }
 
+// Deny-list: paths the admin has explicitly removed from the pruned cache.
+// Requests for these return 404 and are NEVER re-fetched from the CDN,
+// so deletions in the pruned cache persist. Reversible: delete the file
+// db/cache_denylist.txt and this Set stays empty.
+const DENYLIST_FILE = path.join(DB_DIR, "cache_denylist.txt");
+const denyList = new Set();
+try {
+    if (fs.existsSync(DENYLIST_FILE)) {
+        for (const line of fs.readFileSync(DENYLIST_FILE, "utf8").split("\n")) {
+            const p = line.trim();
+            if (p) denyList.add(p);
+        }
+        console.log(`${CLR.YELLOW}[CACHE] Loaded ${denyList.size} deny-listed paths${CLR.RESET}`);
+    }
+} catch (e) { console.error("[CACHE] deny-list load error:", e.message); }
+
 app.use("/cache", (req, res, next) => {
     const safePath = path.normalize(req.path).replace(/^(\.\.[\/\\])+/, '').replace(/^\/+/, '');
+    if (denyList.has(safePath)) {
+        console.log(`${CLR.RED}[DENYLIST] blocked (admin-removed): /${safePath}${CLR.RESET}`);
+        return res.status(404).send("File not found.");
+    }
     const filePath = path.join(CACHE_DIR, safePath);
     fs.stat(filePath, (err, stat) => {
         if (err || !stat.isFile()) {
