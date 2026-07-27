@@ -1031,7 +1031,7 @@ p.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
                     const item = Number(b.item), qty = Number(b.qty || 1), price = Number(b.price || 0);
                     if (!Number.isInteger(item) || item < 0 || item > 100000) return res.status(400).json({ error: "bad item id" });
                     if (!Number.isInteger(qty) || qty < 1 || qty > 10000) return res.status(400).json({ error: "bad qty" });
-                    if (!Number.isInteger(price) || price < 0 || price > 100000000) return res.status(400).json({ error: "bad price" });
+                    if (!Number.isInteger(price) || price < 0 || price > 2147483647) return res.status(400).json({ error: "bad price" });
                     // auto-create the price file (-name.json) if missing so buy() works live
                     const cur = b.currency === "tokens" ? "v" : "g";
                     const pf = path.join(shopDirAbs, "-" + b.name + ".json");
