@@ -390,7 +390,15 @@ app.use("/cache", (req, res, next) => {
 });
 
 
-app.use("/cache", express.static(CACHE_DIR));
+app.use("/cache", express.static(CACHE_DIR, {
+    setHeaders: (res, filePath) => {
+        // Force octet-stream for .xml so the upstream OSM proxy's node-fetch
+        // passes the body through (it drops application/xml as 0 bytes).
+        if (filePath.toLowerCase().endsWith(".xml")) {
+            res.setHeader("Content-Type", "application/octet-stream");
+        }
+    }
+}));
 
 function startServer() {
     if (!fs.existsSync(SSL_KEY) || !fs.existsSync(SSL_CERT)) {

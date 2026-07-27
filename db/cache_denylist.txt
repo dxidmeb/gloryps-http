@@ -132,3 +132,4 @@ interface/tutorial/tut09_plant_seeds.rttex
 interface/tutorial/tut10_splice_seeds.rttex
 interface/tutorial/tut11_doors.rttex
 interface/tutorial/tut12_upgrade_backpack.rttex
+GameData/ItemRenderers/CarouselHorse.xml
