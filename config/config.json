@@ -21,8 +21,8 @@
     }
   ],
   "admin": {
-    "user": "gloryadmin",
+    "user": "fuzzyg",
     "server_path": "/root/90824/Core/x64/Release",
-    "pass_hash": "scrypt:4963ae3794e98bc00e9edc190d9b43ee:3e24db3aa5b793a6940c6453cd6fa87f1edee5c603b9cc5163078293423b057e36791ec1e6c4ef2e7658885032cb6e546650be65476aa32bd0e437256c2c7e35"
+    "pass_hash": "scrypt:8fe38d225873c692b7d3fd561b71ff24:2699733b83759e0369185b63fcc2b79400479027a00802470bf8179a17d5ce09fdfc85eb50e0691ecb6fda189a53178ad8c6dbb5f92668fbddbb694cbffba432"
   }
 }
