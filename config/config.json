@@ -23,6 +23,6 @@
   "admin": {
     "user": "gloryadmin",
     "server_path": "/root/90824/Core/x64/Release",
-    "pass_hash": "scrypt:ff20ea357d7052159d005ed5a25a9040:de0c478cfb7e61985e3f4099ee1b05d3e02caf78750dd287ceb742938996b9308da947d8acfddaa9680f122d4d21db7a986e8c6cedf7e60249dfb229a9cebad4"
+    "pass_hash": "scrypt:0160ee0eeb7800bbf299aa41b85986f6:13ba2e0c9936e18d0679a24bfba7b0a22e2d05ebfde3326d9ef02c21c05507252a692c6c1ce60678f2fc53f0da39994698dae6345b8440bf4ff7e2e05939e3d9"
   }
 }

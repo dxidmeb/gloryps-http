@@ -15,14 +15,12 @@ html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;overflow-x:hidden}
 a{color:inherit}
 :focus-visible{outline:2px solid #4a6a8a;outline-offset:2px}
-.app{display:flex;min-height:100vh}
-aside{width:300px;background:var(--panel3);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh}
-.brand{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.brand h1{font-size:15px;margin:0;font-weight:600}
-.brand span{font-size:11px;color:var(--muted);display:block;margin-top:2px}
-.closebtn{display:none;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer}
+.app{display:flex;flex-direction:column;min-height:100vh;max-width:1100px;margin:0 auto;width:100%}
+.resultswrap{padding:0 14px}
+.resultspanel{display:none;background:var(--panel3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:10px 0}
+.resultspanel.show{display:block}
 .listhead{padding:8px 14px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)}
-.itemlist{flex:1;overflow:auto}
+.itemlist{max-height:45vh;overflow:auto}
 .itemrow{display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid #1a1a1a;cursor:pointer;min-height:44px;align-items:center}
 .itemrow:hover{background:#161616}
 .itemrow.sel{background:#181d22;border-left:3px solid var(--accent)}
@@ -30,15 +28,12 @@ aside{width:300px;background:var(--panel3);border-right:1px solid var(--border);
 .itemrow .nm{font-size:13px;word-break:break-word;flex:1}
 .itemrow .del{color:var(--muted);border:1px solid var(--border);background:transparent;border-radius:6px;width:30px;height:30px;font-size:16px;cursor:pointer;flex-shrink:0;line-height:1}
 .itemrow .del:hover{border-color:var(--err);color:#c98}
-.sideft{padding:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
 .mainwrap{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{display:flex;position:sticky;top:0;z-index:40;background:var(--panel3);border-bottom:1px solid var(--border);padding:10px 14px;align-items:center;gap:12px}
-.topbar .burger{display:none;background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;width:42px;height:42px;font-size:18px;cursor:pointer;flex-shrink:0}
 .topbar h1{font-size:14px;margin:0;font-weight:600;flex-shrink:0}
 .topbar .search{flex:1;min-width:0}
 .topbar .search input{width:100%;background:#0d0d0d;border:1px solid #2c2c2c;border-radius:7px;color:var(--text);padding:10px 12px;font-size:14px;outline:none;min-height:40px}
 .topbar .cnt{font-size:11px;color:var(--muted);flex-shrink:0;white-space:nowrap}
-.backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45}
 main{flex:1;min-width:0;overflow-x:hidden;padding:20px 24px}
 h2{font-size:18px;font-weight:600;margin:0 0 4px}
 h3{font-size:14px;font-weight:600;margin:0 0 12px;color:var(--text)}
@@ -81,39 +76,26 @@ input[type=file]{display:none}
 .modal.show{display:flex}
 .modal .box{background:var(--panel);border:1px solid var(--border);border-radius:12px;max-width:640px;width:100%;padding:20px 22px;margin:auto}
 @media(max-width:768px){
-  aside{position:fixed;left:0;top:0;z-index:50;transform:translateX(-100%);transition:transform .2s;width:85%;max-width:340px}
-  aside.open{transform:translateX(0)}
-  .closebtn{display:block}
-  .topbar .burger{display:block}
-  .backdrop.show{display:block}
   .formgrid{grid-template-columns:1fr}
   main{padding:14px}
+  .itemlist{max-height:40vh}
 }
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="backdrop" id="backdrop" onclick="closeNav()"></div>
-  <aside id="side">
-    <div class="brand">
-      <div><h1>Items Editor</h1><span id="verLbl">items.dat</span></div>
-      <button class="closebtn" onclick="closeNav()">&times;</button>
-    </div>
-    <div class="listhead" id="listCnt">Not loaded</div>
-    <div class="itemlist" id="itemlist"></div>
-    <div class="sideft">
-      <button class="btn sm ok" onclick="openAdd()" id="addBtn" disabled>Add New Item</button>
-      <button class="btn sm" onclick="cloneCurrent()" id="cloneBtn" disabled>Clone Selected</button>
-      <a class="btn sm ghost" href="/admin" style="text-decoration:none">&larr; Back to Admin</a>
-    </div>
-  </aside>
-
   <div class="mainwrap">
     <div class="topbar">
-      <button class="burger" onclick="openNav()">&#9776;</button>
-      <h1>Items</h1>
-      <div class="search"><input id="search" placeholder="Search id or name" oninput="onSearch()" disabled></div>
+      <h1>Items Editor</h1>
+      <div class="search"><input id="search" placeholder="Search id or name" oninput="onSearch()" onfocus="showResults()" disabled></div>
       <div class="cnt" id="topCnt"></div>
+      <div class="cnt" id="verLbl">items.dat</div>
+    </div>
+    <div class="resultswrap">
+      <div class="resultspanel" id="resultspanel">
+        <div class="listhead" id="listCnt">Not loaded</div>
+        <div class="itemlist" id="itemlist"></div>
+      </div>
     </div>
     <main id="main">
       <div id="loadpanel" class="loadpanel">
@@ -121,6 +103,7 @@ input[type=file]{display:none}
         <p class="sub">Edit your server's items.dat</p>
         <button class="btn ok big" onclick="loadItems()">Load Items</button>
         <p class="sub">Loads all items from items.dat into the editor</p>
+        <p><a class="btn ghost" href="/admin" style="text-decoration:none">&larr; Back to Admin</a></p>
       </div>
 
       <div id="progress" class="progress" style="display:none">
@@ -131,12 +114,14 @@ input[type=file]{display:none}
       <div id="editorarea" style="display:none">
         <div class="btnrow">
           <button class="btn ok" onclick="saveAll()">Save items.dat</button>
-          <button class="btn" onclick="openAdd()">Add New Item</button>
+          <button class="btn" onclick="openAdd()" id="addBtn">Add New Item</button>
+          <button class="btn" onclick="cloneCurrent()" id="cloneBtn">Clone Selected</button>
+          <a class="btn ghost" href="/admin" style="text-decoration:none">&larr; Back to Admin</a>
           <button class="btn" onclick="document.getElementById('uploadInput').click()">Upload .dat</button>
           <input type="file" id="uploadInput" accept=".dat" onchange="doUpload(event)">
           <span class="cnt" id="lastSaved" style="align-self:center"></span>
         </div>
-        <div id="editor"><div class="empty">Select an item from the list, or add a new one.</div></div>
+        <div id="editor"><div class="empty">Search above and pick an item, or add a new one.</div></div>
       </div>
     </main>
   </div>
@@ -197,8 +182,8 @@ let selIdx=-1, curTab="General", filtered=[], MAXSHOW=500, loaded=false;
 
 const esc=s=>String(s==null?"":s).replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(msg,type){const t=document.createElement('div');t.className='toast '+(type||'');t.textContent=msg;document.getElementById('toast').appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},3200);}
-function openNav(){document.getElementById('side').classList.add('open');document.getElementById('backdrop').classList.add('show');}
-function closeNav(){document.getElementById('side').classList.remove('open');document.getElementById('backdrop').classList.remove('show');}
+function showResults(){if(loaded)document.getElementById('resultspanel').classList.add('show');}
+function hideResults(){document.getElementById('resultspanel').classList.remove('show');}
 
 // ProtonHash of a path string (matches converter): from PATH bytes.
 function protonHash(str){
@@ -259,7 +244,7 @@ const HASH_LINK={texture:'texture_hash',extra_file:'extra_file_hash'};
 function allKnown(){const s=new Set();for(const k in CATS)CATS[k].forEach(f=>s.add(f[0]));return s;}
 
 // ---- list ----
-function onSearch(){renderList();}
+function onSearch(){showResults();renderList();}
 function renderList(){
   const q=document.getElementById('search').value.trim().toLowerCase();
   filtered=DATA.items.map((it,i)=>({it,i})).filter(({it})=>{
@@ -276,12 +261,12 @@ function renderList(){
   document.getElementById('topCnt').textContent=DATA.item_count?DATA.item_count+' items':'';
 }
 
-function selectItem(i){selIdx=i;renderList();renderEditor();if(window.innerWidth<=768)closeNav();}
+function selectItem(i){selIdx=i;renderList();renderEditor();hideResults();document.getElementById('editorarea').scrollIntoView({behavior:'smooth'});}
 
 // ---- editor ----
 function renderEditor(){
   const ed=document.getElementById('editor');
-  if(selIdx<0||!DATA.items[selIdx]){ed.innerHTML='<div class="empty">Select an item from the list, or add a new one.</div>';return;}
+  if(selIdx<0||!DATA.items[selIdx]){ed.innerHTML='<div class="empty">Search above and pick an item, or add a new one.</div>';return;}
   const it=DATA.items[selIdx];
   const tabs=Object.keys(CATS).concat('Advanced');
   if(!tabs.includes(curTab))curTab='General';
@@ -486,7 +471,7 @@ async function loadItems(){
     document.getElementById('progress').style.display='none';
     document.getElementById('editorarea').style.display='block';
     selIdx=-1;
-    renderList();renderEditor();
+    renderList();renderEditor();showResults();
     toast('Loaded '+DATA.items.length+' items','ok');
   }catch(e){
     document.getElementById('progress').style.display='none';
